@@ -1,0 +1,4 @@
+tsampi:
+  build: .
+  volumes:
+   - .:/code
