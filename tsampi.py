@@ -1,33 +1,58 @@
 #!/usr/bin/env python3
-"""Tsampi.
+'''
+Run this with `$ python ./miny_django.py runserver`
+and go to http://localhost:8000/
+'''
+# Settings must be configured before importing
 
-Usage:
-  tsampi.py validate
-  tsampi.py commit path
-  tsampi.py pull
-  tsampi.py push
-
-Options:
-  -h --help     Show this screen.
-  --version     Show version.
-  --path=<path> Path to Tsampi dir (default: .tsampi/repo)
-"""
-
-from docopt import docopt
 from git import Repo
 import subprocess
 import gnupg
 import os
 import logging
-import settings
+import sys
 
+import django
+from django.conf import settings
+from django.conf.urls import patterns
 
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
 
 def here(x):
     return os.path.join(os.path.abspath(os.path.dirname(__file__)), x)
 
+
+os.environ['GNUPGHOME'] = here('keys')
+
+TSAMPI_HOME = here('./repos/tsampidb-0')
+TIMEOUT = 1
+MY_KEY = None
+# this module
+me = os.path.splitext(os.path.split(__file__)[1])[0]
+
+# SETTINGS
+DEBUG = True
+ROOT_URLCONF = me
+DATABASES = {'default': {}}  # required regardless of actual usage
+TEMPLATE_DIRS = (here('.'), )
+SECRET_KEY = 'so so secret'
+STATIC_URL = '/static/'
+INSTALLED_APPS = [
+    'rest_framework',
+    'django.contrib.contenttypes',
+    'django.contrib.auth',
+    'django.contrib.staticfiles',
+]
+
+if not settings.configured:
+    settings.configure(**locals())
+    django.setup()
+
+from rest_framework.decorators import api_view
+from rest_framework.response import Response
+
+
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
 
 
 repo = Repo(settings.TSAMPI_HOME)
@@ -50,12 +75,14 @@ def validate_commit(commit):
         repo.git.verify_commit(commit.hexsha)
         print('Valid signiture! {}'.format(commit.hexsha))
     except Exception as e:
-        logger.error('Invalid gpg  signiture {} Error: {}'.format(commit.hexsha, e))
+        logger.error(
+            'Invalid gpg  signiture {} Error: {}'.format(commit.hexsha, e))
 
     for p in commit.parents:
         repo.git.checkout(p.hexsha)
         print('-' * 25, 'SHOW')
-        validate_input = repo.git.show(commit.hexsha, c=True, show_signature=True)
+        validate_input = repo.git.show(
+            commit.hexsha, c=True, show_signature=True)
         print(validate_input)
         print('-' * 25, 'END SHOW')
         out = subprocess.check_output(['pypy-sandbox',
@@ -64,9 +91,9 @@ def validate_commit(commit):
                                        'validate.py'],
                                       universal_newlines=True,
                                       input=validate_input,
-            timeout=settings.TIMEOUT,
-            stderr=subprocess.STDOUT)
-        print('out: ',out)
+                                      timeout=settings.TIMEOUT,
+                                      stderr=subprocess.STDOUT)
+        print('out: ', out)
         if '[Subprocess exit code: 1]' in out:
             # print(commit.hexsha, commit.parents, '=' * 10)
             # print('------')
@@ -150,7 +177,8 @@ def pull():
                 try:
                     validate(remote)
                 except Exception as e:
-                    logger.error('Validation error on remote:{}\n{}'.format(remote, e))
+                    logger.error(
+                        'Validation error on remote:{}\n{}'.format(remote, e))
                     continue
                 try:
                     repo.git.pull(r.name, 'master')
@@ -177,23 +205,20 @@ def assert_keys():
 
     return fingerprint
 
+# VIEW
+
+
+@api_view()
+def index(request):
+    return Response('hi')
+
+
+# URLS
+urlpatterns = patterns('', (r'^$', index))
 
 if __name__ == '__main__':
-    arguments = docopt(__doc__, version='0.0.1')
-    assert_keys()
-
-    if arguments['validate']:
-        print('Validating')
-        validate()
-
-    if arguments['commit']:
-        print('commiting')
-        commit()
-
-    if arguments['pull']:
-        print('pulling')
-        pull()
-
-    if arguments['push']:
-        print('pushing')
-        push()
+    # set the ENV
+    sys.path += (here('.'),)
+    # run the development server
+    from django.core import management
+    management.execute_from_command_line()
