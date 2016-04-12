@@ -12,59 +12,39 @@ import os
 import logging
 import sys
 
-import django
-from django.conf import settings
-from django.conf.urls import patterns
 
 
 def here(x):
     return os.path.join(os.path.abspath(os.path.dirname(__file__)), x)
 
 
-os.environ['GNUPGHOME'] = here('keys')
+#os.environ['GNUPGHOME'] = here('keys')
 
-TSAMPI_HOME = here('./repos/tsampidb-0')
-TIMEOUT = 1
-MY_KEY = None
+TSAMPI_HOME = '~/tsampi-bantz'
+TIMEOUT = 30
 # this module
 me = os.path.splitext(os.path.split(__file__)[1])[0]
 
-# SETTINGS
-DEBUG = True
-ROOT_URLCONF = me
-DATABASES = {'default': {}}  # required regardless of actual usage
-TEMPLATE_DIRS = (here('.'), )
-SECRET_KEY = 'so so secret'
-STATIC_URL = '/static/'
-INSTALLED_APPS = [
-    'rest_framework',
-    'django.contrib.contenttypes',
-    'django.contrib.auth',
-    'django.contrib.staticfiles',
-]
-
-if not settings.configured:
-    settings.configure(**locals())
-    django.setup()
-
-from rest_framework.decorators import api_view
-from rest_framework.response import Response
 
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
 
-repo = Repo(settings.TSAMPI_HOME)
+repo = Repo(TSAMPI_HOME)
 repo.git.config('gpg.program', here('./gpg-with-fingerprint'))
 gpg = gnupg.GPG(homedir=here('keys'))
 
 
 def validate(branch='master'):
+
     for commit in repo.iter_commits(branch):
         valid = validate_commit(commit)
         if not valid:
-            break
+            yield False
+        else:
+            yield True
+    repo.git.checkout(branch)
 
 
 def validate_commit(commit):
@@ -75,34 +55,36 @@ def validate_commit(commit):
         repo.git.verify_commit(commit.hexsha)
         print('Valid signiture! {}'.format(commit.hexsha))
     except Exception as e:
-        logger.error(
+        logger.debug(
             'Invalid gpg  signiture {} Error: {}'.format(commit.hexsha, e))
 
     for p in commit.parents:
         repo.git.checkout(p.hexsha)
-        print('-' * 25, 'SHOW')
+        #print('-' * 25, 'SHOW')
         validate_input = repo.git.show(
             commit.hexsha, c=True, show_signature=True)
-        print(validate_input)
-        print('-' * 25, 'END SHOW')
+        #print(validate_input)
+        #print('-' * 25, 'END SHOW')
         out = subprocess.check_output(['pypy-sandbox',
                                        '--tmp',
                                        repo.working_tree_dir,
-                                       'validate.py'],
+                                       'tsampi', 'validate'],
                                       universal_newlines=True,
                                       input=validate_input,
-                                      timeout=settings.TIMEOUT,
+                                      timeout=TIMEOUT,
                                       stderr=subprocess.STDOUT)
+        print('=' * 10)
         print('out: ', out)
-        if '[Subprocess exit code: 1]' in out:
+        print('=' * 10)
+        if 'ValidationError: Invalid proof of work' in out:
             # print(commit.hexsha, commit.parents, '=' * 10)
             # print('------')
             # print(repo.git.show(commit.hexsha, c=True))
             # print('-------')
-            logger.error('Invalid Commit!')
+            print('Invalid Commit!', commit)
             return False
 
-    logger.info('Valid Commit!')
+    logger.info('Valid Commit!', commit)
     return True
 
 
@@ -149,18 +131,31 @@ def zeros():
 
 
 def commit(path='.', key=None):
-    leading_zeros = zeros()
-    if not key:
-        key = assert_keys()
+    #leading_zeros = zeros()
+    #if not key:
+    #    key = assert_keys()
     for i in range(0, 10000):
         repo.git.add(path)
-        repo.git.commit(m=i, gpg_sign=key)
+        repo.git.commit(m=str(i))
         sha = repo.head.commit.hexsha
         print(sha, i)
-        if sha.startswith(leading_zeros):
+        if validate_commit(repo.head.commit):
+            repo.git.checkout('master')
             return
+        repo.git.checkout('master')
         repo.git.reset('HEAD~')
 
+
+def make_random_data():
+    from hashlib import sha1
+    import random
+    from bencode import Bencoder
+    import string
+    data = ''.join(random.choice(string.printable) for i in range(random.randrange(5,1000)))
+    bc = Bencoder.encode({'parent_sha1':'0' * 40, 'data': data}).encode()
+    name = sha1(bc).hexdigest()
+    with open('/home/tim/tsampi-bantz/data/' + name, 'wb') as f:
+        f.write(bc)
 
 def push():
     repo.git.push()
@@ -175,7 +170,10 @@ def pull():
             for remote in r.fetch():
                 print(r.name, remote)
                 try:
-                    validate(remote)
+                    if not all(validate(remote)):
+                        logger.debug(
+                        'Validation error on remote:{}'.format(remote))
+                        continue
                 except Exception as e:
                     logger.error(
                         'Validation error on remote:{}\n{}'.format(remote, e))
@@ -195,7 +193,7 @@ def assert_keys():
         key, fingerprint = generate_key()
 
     fingerprint = gpg.list_keys()[0]['fingerprint']
-    public_key_path = os.path.join(settings.TSAMPI_HOME, 'keys', fingerprint)
+    public_key_path = os.path.join(TSAMPI_HOME, 'keys', fingerprint)
 
     if not os.path.isfile(public_key_path):
         with open(public_key_path, 'w') as public_key_file:
@@ -205,20 +203,4 @@ def assert_keys():
 
     return fingerprint
 
-# VIEW
 
-
-@api_view()
-def index(request):
-    return Response('hi')
-
-
-# URLS
-urlpatterns = patterns('', (r'^$', index))
-
-if __name__ == '__main__':
-    # set the ENV
-    sys.path += (here('.'),)
-    # run the development server
-    from django.core import management
-    management.execute_from_command_line()
