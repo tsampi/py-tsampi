@@ -10,11 +10,9 @@ import subprocess
 import gnupg
 import os
 import logging
-import sys
 import glob
 import random
 from hashlib import sha1
-import random
 from bencode import Bencoder
 import string
 
@@ -22,17 +20,17 @@ import cgitb
 
 cgitb.enable(format='text', context=10)
 
+
 def here(x):
     return os.path.join(os.path.abspath(os.path.dirname(__file__)), x)
 
 
-#os.environ['GNUPGHOME'] = here('keys')
+# os.environ['GNUPGHOME'] = here('keys')
 
 TSAMPI_HOME = os.path.expanduser('~/tsampi-bantz')
 TIMEOUT = 30
 # this module
 me = os.path.splitext(os.path.split(__file__)[1])[0]
-
 
 
 logger = logging.getLogger(__name__)
@@ -68,11 +66,8 @@ def validate_commit(commit):
 
     for p in commit.parents:
         repo.git.checkout(p.hexsha)
-        #print('-' * 25, 'SHOW')
         validate_input = repo.git.show(
             commit.hexsha, c=True, show_signature=True)
-        #print(validate_input)
-        #print('-' * 25, 'END SHOW')
         out = subprocess.check_output(['pypy-sandbox',
                                        '--tmp',
                                        repo.working_tree_dir,
@@ -139,8 +134,7 @@ def zeros():
 
 
 def commit(path='.', key=None):
-    #leading_zeros = zeros()
-    #if not key:
+    # if not key:
     #    key = assert_keys()
     for i in range(0, 10000):
         repo.git.add(path)
@@ -155,7 +149,7 @@ def commit(path='.', key=None):
 
 
 def random_bantz_hash():
-    paths = glob.glob(os.path.join(TSAMPI_HOME,'data', '*'))
+    paths = glob.glob(os.path.join(TSAMPI_HOME, 'data', '*'))
     if not paths:
         return ""
     filepath = random.choice(paths)
@@ -163,20 +157,24 @@ def random_bantz_hash():
     print(bantz_hash)
     return bantz_hash
 
+
 def all_bantz_hashes():
-    filepaths = glob.iglob(os.path.join(TSAMPI_HOME,'data', '*'))
+    filepaths = glob.iglob(os.path.join(TSAMPI_HOME, 'data', '*'))
     for filepath in filepaths:
         bantz_hash = os.path.basename(filepath)
         yield bantz_hash
 
+
 def get_bantz(bantz_hash):
-    with open(os.path.join(TSAMPI_HOME,'data', bantz_hash), 'rb') as f:
+    with open(os.path.join(TSAMPI_HOME, 'data', bantz_hash), 'rb') as f:
         data = Bencoder.decode(f.read().decode())
     return data
+
 
 def random_bantz():
     bantz_hash = random_bantz_hash()
     return get_bantz(bantz_hash)
+
 
 def all_bantz():
     for bantz_hash in all_bantz_hashes():
@@ -184,12 +182,14 @@ def all_bantz():
 
 
 def make_random_data():
-    data = ''.join(random.choice(string.printable) for i in range(random.randrange(5,1000)))
+    data = ''.join(random.choice(string.printable)
+                   for i in range(random.randrange(5, 1000)))
     random_parent = random_bantz_hash()
     bc = Bencoder.encode({'parent_sha1': random_parent, 'data': data}).encode()
     name = sha1(bc).hexdigest()
     with open('/home/tim/tsampi-bantz/data/' + name, 'wb') as f:
         f.write(bc)
+
 
 def push():
     repo.git.push()
@@ -206,7 +206,7 @@ def pull():
                 try:
                     if not all(validate(remote)):
                         logger.debug(
-                        'Validation error on remote:{}'.format(remote))
+                            'Validation error on remote:{}'.format(remote))
                         continue
                 except Exception as e:
                     logger.error(
@@ -236,5 +236,3 @@ def assert_keys():
         commit(os.path.join('keys', fingerprint), fingerprint)
 
     return fingerprint
-
-
