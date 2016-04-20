@@ -11,8 +11,16 @@ import gnupg
 import os
 import logging
 import sys
+import glob
+import random
+from hashlib import sha1
+import random
+from bencode import Bencoder
+import string
 
+import cgitb
 
+cgitb.enable(format='text', context=10)
 
 def here(x):
     return os.path.join(os.path.abspath(os.path.dirname(__file__)), x)
@@ -20,7 +28,7 @@ def here(x):
 
 #os.environ['GNUPGHOME'] = here('keys')
 
-TSAMPI_HOME = '~/tsampi-bantz'
+TSAMPI_HOME = os.path.expanduser('~/tsampi-bantz')
 TIMEOUT = 30
 # this module
 me = os.path.splitext(os.path.split(__file__)[1])[0]
@@ -41,9 +49,9 @@ def validate(branch='master'):
     for commit in repo.iter_commits(branch):
         valid = validate_commit(commit)
         if not valid:
-            yield False
+            yield False, commit
         else:
-            yield True
+            yield True, commit
     repo.git.checkout(branch)
 
 
@@ -74,9 +82,9 @@ def validate_commit(commit):
                                       timeout=TIMEOUT,
                                       stderr=subprocess.STDOUT)
         print('=' * 10)
-        print('out: ', out)
+        print('out: ', '\n'.join(out.splitlines()[1:]))
         print('=' * 10)
-        if 'ValidationError: Invalid proof of work' in out:
+        if 'ValidationError' in out:
             # print(commit.hexsha, commit.parents, '=' * 10)
             # print('------')
             # print(repo.git.show(commit.hexsha, c=True))
@@ -146,13 +154,39 @@ def commit(path='.', key=None):
         repo.git.reset('HEAD~')
 
 
+def random_bantz_hash():
+    paths = glob.glob(os.path.join(TSAMPI_HOME,'data', '*'))
+    if not paths:
+        return ""
+    filepath = random.choice(paths)
+    bantz_hash = os.path.basename(filepath)
+    print(bantz_hash)
+    return bantz_hash
+
+def all_bantz_hashes():
+    filepaths = glob.iglob(os.path.join(TSAMPI_HOME,'data', '*'))
+    for filepath in filepaths:
+        bantz_hash = os.path.basename(filepath)
+        yield bantz_hash
+
+def get_bantz(bantz_hash):
+    with open(os.path.join(TSAMPI_HOME,'data', bantz_hash), 'rb') as f:
+        data = Bencoder.decode(f.read().decode())
+    return data
+
+def random_bantz():
+    bantz_hash = random_bantz_hash()
+    return get_bantz(bantz_hash)
+
+def all_bantz():
+    for bantz_hash in all_bantz_hashes():
+        yield get_bantz(bantz_hash)
+
+
 def make_random_data():
-    from hashlib import sha1
-    import random
-    from bencode import Bencoder
-    import string
     data = ''.join(random.choice(string.printable) for i in range(random.randrange(5,1000)))
-    bc = Bencoder.encode({'parent_sha1':'0' * 40, 'data': data}).encode()
+    random_parent = random_bantz_hash()
+    bc = Bencoder.encode({'parent_sha1': random_parent, 'data': data}).encode()
     name = sha1(bc).hexdigest()
     with open('/home/tim/tsampi-bantz/data/' + name, 'wb') as f:
         f.write(bc)
