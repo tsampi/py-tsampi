@@ -1,6 +1,0 @@
-tsampi:
-  build: .
-  working_dir: /code
-  volumes:
-   - .:/code
-   - ./keys/ssh:~/.ssh/
