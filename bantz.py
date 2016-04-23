@@ -1,13 +1,8 @@
 #!/usr/bin/env python3
-'''
-Run this with `$ python ./miny_django.py runserver`
-and go to http://localhost:8000/
-'''
-# Settings must be configured before importing
 
 from git import Repo
 import subprocess
-import gnupg
+# import gnupg
 import os
 import logging
 import glob
@@ -27,7 +22,7 @@ def here(x):
 
 # os.environ['GNUPGHOME'] = here('keys')
 
-TSAMPI_HOME = os.path.expanduser('~/tsampi-bantz')
+TSAMPI_HOME = os.path.expanduser('~/tsampi-0')
 TIMEOUT = 30
 # this module
 me = os.path.splitext(os.path.split(__file__)[1])[0]
@@ -39,7 +34,7 @@ logger.setLevel(logging.DEBUG)
 
 repo = Repo(TSAMPI_HOME)
 repo.git.config('gpg.program', here('./gpg-with-fingerprint'))
-gpg = gnupg.GPG(homedir=here('keys'))
+# gpg = gnupg.GPG(homedir=here('keys'))
 
 
 def validate(branch='master'):
@@ -185,10 +180,15 @@ def make_random_data():
     data = ''.join(random.choice(string.printable)
                    for i in range(random.randrange(5, 1000)))
     random_parent = random_bantz_hash()
-    bc = Bencoder.encode({'parent_sha1': random_parent, 'data': data}).encode()
+    return save_bantz(random_parentm, data)
+
+
+def save_bantz(parent_sha1, data):
+    bc = Bencoder.encode({'parent_sha1': parent_sha1 or '', 'data': data}).encode()
     name = sha1(bc).hexdigest()
     with open('/home/tim/tsampi-bantz/data/' + name, 'wb') as f:
         f.write(bc)
+    return name
 
 
 def push():
@@ -236,3 +236,58 @@ def assert_keys():
         commit(os.path.join('keys', fingerprint), fingerprint)
 
     return fingerprint
+
+
+#  ====== SERVER ======
+from django.http import HttpResponse
+from django.conf.urls import url
+from django.shortcuts import redirect
+from django.shortcuts import render
+from django.views.decorators.csrf import csrf_protect
+
+
+DEBUG = True
+ROOT_URLCONF = 'bantz'
+DATABASES = {'default': {}}
+SECRET_KEY = "sadfjnsadkfjn$@G#TBegf2#GrTegravfdgfdNHHWgrebtnwh5ERB"
+TEMPLATE_DIRS = [
+    here('.')
+]
+MIDDLEWARE_CLASSES = [
+    'django.middleware.common.CommonMiddleware',
+    'django.middleware.csrf.CsrfViewMiddleware',
+]
+
+INSTALLED_APPS = [
+    'django.contrib.contenttypes',
+    'django.contrib.staticfiles',
+]
+
+import django
+django.setup()
+from django.views.decorators.csrf import csrf_exempt
+
+def index(request):
+    bantz_hash = random_bantz_hash()
+    return redirect('/' + bantz_hash)
+
+
+def bantz_view(request, bantz_hash):
+    bantz = get_bantz(bantz_hash)
+    context = {'bantz': bantz}
+    if request.method == "POST":
+        data = request.POST['data']
+        parent_sha1 = request.POST['parent_sha1']
+        bantz_hash = save_bantz(parent_sha1, data)
+        return redirect('/' + bantz_hash)
+
+    return render(request, 'bantz.html', context)
+
+
+
+urlpatterns = [
+    url(r'^$', index),
+    url(r'^(?P<bantz_hash>\w+)?$', bantz_view),
+]
+
+
