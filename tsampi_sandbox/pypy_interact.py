@@ -20,7 +20,7 @@ provided you use enough -u options:
     ledit python -u /usr/bin/pypy-sandbox -u
 """
 
-import sys, os, stat
+import sys, os, posixpath, errno, stat, time
 sys.path.insert(0, os.path.realpath(os.path.join(os.path.dirname(__file__), '..', '..')))
 from rpython.translator.sandbox.sandlib import SimpleIOSandboxedProc
 from rpython.translator.sandbox.sandlib import VirtualizedSandboxedProc
@@ -52,7 +52,7 @@ class RealWritableFile(RealFile):
     def open(self):
         print('opening', self)
         try:
-            return open(self.path, "w+")
+            return open(self.path, 'r+')
         except IOError, e:
             raise OSError(e.errno, "open failed")
 
@@ -125,9 +125,22 @@ class PyPySandboxedProc(VirtualizedSandboxedProc, SimpleIOSandboxedProc):
         self.executable = executable = os.path.abspath(executable)
         self.tmpdir = tmpdir
         self.debug = debug
+        print(executable)
         super(PyPySandboxedProc, self).__init__([self.argv0] + arguments,
                                                 executable=executable)
 
+    def translate_path(self, vpath):
+        print('translate_path', vpath)
+        # XXX this assumes posix vpaths for now, but os-specific real paths
+        vpath = posixpath.normpath(posixpath.join(self.virtual_cwd, vpath))
+        dirnode = self.virtual_root
+        components = [component for component in vpath.split('/')]
+        for component in components[:-1]:
+            if component:
+                dirnode = dirnode.join(component)
+                if dirnode.kind != stat.S_IFDIR:
+                    raise OSError(errno.ENOTDIR, component)
+        return dirnode, components[-1]
 
     def build_virtual_root(self):
         # build a virtual file system:
@@ -173,14 +186,43 @@ class PyPySandboxedProc(VirtualizedSandboxedProc, SimpleIOSandboxedProc):
         f.write(data)
         return len(data)
 
+    def check_path(self, vpathname, flags):
+        pass
 
     def do_ll_os__ll_os_open(self, vpathname, flags, mode):
-        print('os_open', vpathname, flags, mode)
+        # Normalize the pathname within the sandbox fs
+        print('os_open', vpathname, flags, mode, self.tmpdir)
+        absvfilename = os.path.normpath(os.path.join(self.virtual_cwd, vpathname))
+        print('absvfilename', absvfilename)
+        # If this is readonly, don't attempt to creat path and file
+        if flags != os.O_RDONLY:
+            print('write')
+            if absvfilename.startswith( '/tmp/'):
+                filename = self.tmpdir + absvfilename[4:]
+                print('filename', filename)
+                # make the file and parent dirs before opening it.
+                if not os.path.exists(os.path.dirname(filename)):
+                    try:
+                        print('making path', os.path.dirname(filename))
+                        os.makedirs(os.path.dirname(filename))
+                    except OSError as exc: # Guard against race condition
+                        if exc.errno != errno.EEXIST:
+                            raise
+                # Hack to ensure the file exists in the real fs
+                print('touching file', filename)
+                open(filename, "a").close()
+        else:
+            print('read only')
+
+
         node = self.get_node(vpathname)
         #if flags & (os.O_RDONLY|os.O_WRONLY|os.O_RDWR) != os.O_RDONLY:
         #    raise OSError(errno.EPERM, "write access denied")
         # all other flags are ignored
-        f = node.open()
+        if type(node) is RealWritableFile:
+            f = node.open()
+        else:
+            f = node.open()
         return self.allocate_fd(f, node)
 
 
@@ -260,8 +302,8 @@ def main():
         from subprocess import check_output
         multiarch_triple = check_output(('gcc', '--print-multiarch')).strip()
 
-    sandproc = PyPySandboxedProc('/usr/lib/pypy-sandbox/%s/pypy-c-sandbox'
-                                 % multiarch_triple,
+
+    sandproc = PyPySandboxedProc('/usr/lib/pypy-sandbox/pypy-c-sandbox',
                                  extraoptions + arguments,
                                  tmpdir=tmpdir, debug=debug)
     if timeout is not None:

@@ -1,0 +1,17 @@
+db:
+  image: "postgres:9.5"
+
+server:
+  build: .
+  volumes:
+    - .:/code/
+  hostname: gathercore-app
+  command: manage runserver 0.0.0.0:8000
+  ports:
+    - "8000:8000"
+  links:
+    - db
+  entrypoint:
+    - bash
+    - /code/entrypoint.sh
+

@@ -1,0 +1,18 @@
+<html>
+  <div>
+    <a href="/">random bantz</a>
+  </div>
+  <div>
+    parent: <a href="/{{ bantz.parent_sha1 }}">{{ bantz.parent_sha1 }}</a>
+  </div>
+  <div>
+    {{ bantz.data }}
+  </div>
+  <form method="POST" action="">
+    {% csrf_token %}
+    <input type="hidden" name="parent_sha1" value="{{ bantz.parent_sha1 }}">
+    <textarea name="data"></textarea>
+    <input type="submit">
+  </form>
+
+</html>
