@@ -36,11 +36,11 @@ class RealWritableFile(RealFile):
         return '<RealWritableFile %s>' % (self.path,)
 
     def stat(self):
-        print('stat', self)
+        # print('stat', self)
         return super(RealWritableFile, self).stat()
 
     def access(self, mode):
-        print('access', mode)
+        # print('access', mode)
         s = self.stat()
         e_mode = s.st_mode & stat.S_IRWXO
         if UID == s.st_uid:
@@ -50,7 +50,7 @@ class RealWritableFile(RealFile):
         return (e_mode & mode) == mode
 
     def open(self):
-        print('opening', self)
+        # print('opening', self)
         try:
             return open(self.path, 'r+')
         except IOError, e:
@@ -70,11 +70,11 @@ class RealWritableDir(RealDir):
         return '<RealWritableDir %s>' % (self.path,)
 
     def stat(self):
-        print('stat')
+        # print('stat')
         return super(RealWritableDir, self).stat()
 
     def access(self, mode):
-        print('access', mode)
+        # print('access', mode)
         s = self.stat()
         e_mode = s.st_mode & stat.S_IRWXO
         if UID == s.st_uid:
@@ -91,25 +91,25 @@ class RealWritableDir(RealDir):
             if name.lower().endswith(excl):
                 raise OSError(errno.ENOENT, name)
         path = os.path.join(self.path, name)
-        print('self.path', self.path)
+        # print('self.path', self.path)
         try:
             if self.follow_links:
                 st = os.stat(path)
             else:
                 st = os.lstat(path)
         except Exception as e:
-            print(e)
+            # print(e)
             raise
         if stat.S_ISDIR(st.st_mode):
-            print('ISDIR')
+            # print('ISDIR')
             return RealWritableDir(path, show_dotfiles = self.show_dotfiles,
                                  follow_links  = self.follow_links,
                                  exclude       = self.exclude)
         elif stat.S_ISREG(st.st_mode):
-            print('ISREG')
+            # print('ISREG')
             return RealWritableFile(path)
         else:
-            print('IS SOMETHING ELSE')
+            # print('IS SOMETHING ELSE')
             # don't allow access to symlinks and other special files
             raise OSError(errno.EACCES, path)
 
@@ -125,12 +125,12 @@ class PyPySandboxedProc(VirtualizedSandboxedProc, SimpleIOSandboxedProc):
         self.executable = executable = os.path.abspath(executable)
         self.tmpdir = tmpdir
         self.debug = debug
-        print(executable)
+        # print(executable)
         super(PyPySandboxedProc, self).__init__([self.argv0] + arguments,
                                                 executable=executable)
 
     def translate_path(self, vpath):
-        print('translate_path', vpath)
+        # print('translate_path', vpath)
         # XXX this assumes posix vpaths for now, but os-specific real paths
         vpath = posixpath.normpath(posixpath.join(self.virtual_cwd, vpath))
         dirnode = self.virtual_root
@@ -191,29 +191,29 @@ class PyPySandboxedProc(VirtualizedSandboxedProc, SimpleIOSandboxedProc):
 
     def do_ll_os__ll_os_open(self, vpathname, flags, mode):
         # Normalize the pathname within the sandbox fs
-        print('os_open', vpathname, flags, mode, self.tmpdir)
+        # print('os_open', vpathname, flags, mode, self.tmpdir)
         absvfilename = os.path.normpath(os.path.join(self.virtual_cwd, vpathname))
-        print('absvfilename', absvfilename)
+        # print('absvfilename', absvfilename)
         # If this is readonly, don't attempt to creat path and file
         if flags != os.O_RDONLY:
-            print('write')
+            # print('write')
             if absvfilename.startswith( '/tmp/'):
                 filename = self.tmpdir + absvfilename[4:]
-                print('filename', filename)
+                # print('filename', filename)
                 # make the file and parent dirs before opening it.
                 if not os.path.exists(os.path.dirname(filename)):
                     try:
-                        print('making path', os.path.dirname(filename))
+                        # print('making path', os.path.dirname(filename))
                         os.makedirs(os.path.dirname(filename))
                     except OSError as exc: # Guard against race condition
                         if exc.errno != errno.EEXIST:
                             raise
                 # Hack to ensure the file exists in the real fs
-                print('touching file', filename)
+                # print('touching file', filename)
                 open(filename, "a").close()
         else:
-            print('read only')
-
+            # print('read only')
+            pass
 
         node = self.get_node(vpathname)
         #if flags & (os.O_RDONLY|os.O_WRONLY|os.O_RDWR) != os.O_RDONLY:

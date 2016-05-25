@@ -6,7 +6,6 @@ import tsampi_sandbox
 
 basedir = os.path.dirname(tsampi_sandbox.__file__)
 # Find our embedded rpython bits
-print(basedir)
 sys.path.insert(0, basedir)
 
 fn = os.path.join(basedir, 'pypy_interact.py')
