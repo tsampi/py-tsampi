@@ -1,0 +1,22 @@
+
+# class Random(object):
+#     '''Random() -> create a random number generator with its own
+#     internal state.'''
+#
+#     def getrandbits(*args, **kwargs):
+#         pass
+#
+#     def getstate(*args, **kwargs):
+#         pass
+#
+#     def jumpahead(*args, **kwargs):
+#         pass
+#
+#     def random(*args, **kwargs):
+#         return .5
+#
+#     def seed(*args, **kwargs):
+#         pass
+#
+#     def setstate(*args, **kwargs):
+#         pass
