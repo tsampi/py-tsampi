@@ -20,18 +20,27 @@ provided you use enough -u options:
     ledit python -u /usr/bin/pypy-sandbox -u
 """
 
-import sys, os, posixpath, errno, stat, time
-sys.path.insert(0, os.path.realpath(os.path.join(os.path.dirname(__file__), '..', '..')))
+import sys
+import os
+import posixpath
+import errno
+import stat
+import time
+import socket
+import urllib
+
+sys.path.insert(0, os.path.realpath(
+    os.path.join(os.path.dirname(__file__), '..', '..')))
 from rpython.translator.sandbox.sandlib import SimpleIOSandboxedProc
-from rpython.translator.sandbox.sandlib import VirtualizedSandboxedProc
+from rpython.translator.sandbox.sandlib import VirtualizedSandboxedProc, RESULTTYPE_STATRESULT
 from rpython.translator.sandbox.vfs import Dir, RealDir, RealFile
-LIB_ROOT = '/usr/lib/pypy'
 
-
+LIB_ROOT = '/code/repos/tsampi-0/tsampi/pypy/'
 
 
 class RealWritableFile(RealFile):
     read_only = False
+
     def __repr__(self):
         return '<RealWritableFile %s>' % (self.path,)
 
@@ -53,7 +62,7 @@ class RealWritableFile(RealFile):
         # print('opening', self)
         try:
             return open(self.path, 'r+')
-        except IOError, e:
+        except IOError as e:
             raise OSError(e.errno, "open failed")
 
 
@@ -66,6 +75,7 @@ class RealWritableDir(RealDir):
     # file endings that we filter out (note that we also filter out files
     # with the same ending but a different case, to be safe).
     read_only = False
+
     def __repr__(self):
         return '<RealWritableDir %s>' % (self.path,)
 
@@ -82,7 +92,6 @@ class RealWritableDir(RealDir):
         if GID == s.st_gid:
             e_mode |= (s.st_mode & stat.S_IRWXG) >> 3
         return (e_mode & mode) == mode
-
 
     def join(self, name):
         if name.startswith('.') and not self.show_dotfiles:
@@ -102,9 +111,9 @@ class RealWritableDir(RealDir):
             raise
         if stat.S_ISDIR(st.st_mode):
             # print('ISDIR')
-            return RealWritableDir(path, show_dotfiles = self.show_dotfiles,
-                                 follow_links  = self.follow_links,
-                                 exclude       = self.exclude)
+            return RealWritableDir(path, show_dotfiles=self.show_dotfiles,
+                                   follow_links=self.follow_links,
+                                   exclude=self.exclude)
         elif stat.S_ISREG(st.st_mode):
             # print('ISREG')
             return RealWritableFile(path)
@@ -112,7 +121,6 @@ class RealWritableDir(RealDir):
             # print('IS SOMETHING ELSE')
             # don't allow access to symlinks and other special files
             raise OSError(errno.EACCES, path)
-
 
 
 class PyPySandboxedProc(VirtualizedSandboxedProc, SimpleIOSandboxedProc):
@@ -125,6 +133,7 @@ class PyPySandboxedProc(VirtualizedSandboxedProc, SimpleIOSandboxedProc):
         self.executable = executable = os.path.abspath(executable)
         self.tmpdir = tmpdir
         self.debug = debug
+        self.sockets = {}
         # print(executable)
         super(PyPySandboxedProc, self).__init__([self.argv0] + arguments,
                                                 executable=executable)
@@ -142,6 +151,100 @@ class PyPySandboxedProc(VirtualizedSandboxedProc, SimpleIOSandboxedProc):
                     raise OSError(errno.ENOTDIR, component)
         return dirnode, components[-1]
 
+
+    def do_ll_os__ll_os_read(self, fd, size):
+        #if fd in self.sockets:
+        #   return self.get_file(fd).recv(size)
+        f = self.get_file(fd, throw=False)
+        if f is None:
+            return super(VirtualizedSandboxedProc, self).do_ll_os__ll_os_read(
+                fd, size)
+        else:
+            if not (0 <= size <= sys.maxint):
+                raise OSError(errno.EINVAL, "invalid read size")
+            # don't try to read more than 256KB at once here
+            return f.read(min(size, 256 * 1024))
+
+    def do_ll_os__ll_os_write(self, fd, data):
+        #if fd in self.sockets:
+        #    return self.get_file(fd).send(data)
+
+        if fd in [1, 2]:
+            return super(VirtualizedSandboxedProc, self).do_ll_os__ll_os_write(
+                fd, data)
+
+        f = self.get_file(fd, throw=False)  # Really? False?
+        f.write(data)
+        return len(data)
+
+    def check_path(self, vpathname, flags):
+        pass
+
+    def do_ll_os__ll_os_fstat(self, fd):
+        if fd in self.sockets:
+            s = self.get_file(fd)
+            st = os.fstat(s.fileno())
+            return st
+        f, node = self.get_fd(fd)
+        return node.stat()
+    do_ll_os__ll_os_fstat.resulttype = RESULTTYPE_STATRESULT
+
+    def do_ll_os__ll_os_open(self, vpathname, flags, mode):
+        if vpathname.startswith("tcp://"):
+            host, port = vpathname[6:].split(":")
+            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            sock.connect((host, int(port)))
+            sock.setblocking(0)
+            fd = self.allocate_fd(sock)
+            self.sockets[fd] = vpathname
+            return fd
+
+        if vpathname.startswith("http://"):
+            #host, port = vpathname[6:].split(":")
+            u = urllib.urlopen(vpathname)
+            sock = u.fp
+            #sock.connect((host, int(port)))
+            #sock.setblocking(0)
+            fd = self.allocate_fd(sock)
+            self.sockets[fd] = True
+            return fd
+
+        # Normalize the pathname within the sandbox fs
+        # print('os_open', vpathname, flags, mode, self.tmpdir)
+        absvfilename = os.path.normpath(
+            os.path.join(self.virtual_cwd, vpathname))
+        # print('absvfilename', absvfilename)
+        # If this is readonly, don't attempt to creat path and file
+        if flags != os.O_RDONLY:
+            # print('write')
+            if absvfilename.startswith('/tmp/'):
+                filename = self.tmpdir + absvfilename[4:]
+                #print('filename', filename)
+                # make the file and parent dirs before opening it.
+                if not os.path.exists(os.path.dirname(filename)):
+                    try:
+                        #print('making path', os.path.dirname(filename))
+                        os.makedirs(os.path.dirname(filename))
+                    except OSError as exc:  # Guard against race condition
+                        if exc.errno != errno.EEXIST:
+                            raise
+                # Hack to ensure the file exists in the real fs
+                #print('touching file', filename)
+                open(filename, "a").close()
+        else:
+            #print('read only')
+            pass
+
+        node = self.get_node(vpathname)
+        # all other flags are ignored
+        if type(node) is RealWritableFile:
+            f = node.open()
+        else:
+            if flags & (os.O_RDONLY|os.O_WRONLY|os.O_RDWR) != os.O_RDONLY:
+               raise OSError(errno.EPERM, "write access denied")
+            f = node.open()
+        return self.allocate_fd(f, node)
+
     def build_virtual_root(self):
         # build a virtual file system:
         # * can access its own executable
@@ -151,6 +254,7 @@ class PyPySandboxedProc(VirtualizedSandboxedProc, SimpleIOSandboxedProc):
         if self.tmpdir is None:
             tmpdirnode = Dir({})
         else:
+            #tmpdirnode = RealWritableDir(self.tmpdir, exclude=exclude)
             tmpdirnode = RealDir(self.tmpdir, exclude=exclude)
         libroot = str(LIB_ROOT)
 
@@ -160,94 +264,11 @@ class PyPySandboxedProc(VirtualizedSandboxedProc, SimpleIOSandboxedProc):
                 'lib-python': RealDir(os.path.join(libroot, 'lib-python'),
                                       exclude=exclude),
                 'lib_pypy': RealDir(os.path.join(libroot, 'lib_pypy'),
-                                      exclude=exclude),
-                }),
-             'tmp': tmpdirnode,
-             })
+                                    exclude=exclude),
+            }),
+            'tmp': tmpdirnode,
+        })
 
-
-    def do_ll_os__ll_os_read(self, fd, size):
-        f = self.get_file(fd, throw=False)
-        if f is None:
-            return super(VirtualizedSandboxedProc, self).do_ll_os__ll_os_read(
-                fd, size)
-        else:
-            if not (0 <= size <= sys.maxint):
-                raise OSError(errno.EINVAL, "invalid read size")
-            # don't try to read more than 256KB at once here
-            return f.read(min(size, 256*1024))
-
-
-    def do_ll_os__ll_os_write(self, fd, data):
-        if fd in [1, 2]:
-            return super(VirtualizedSandboxedProc, self).do_ll_os__ll_os_write(
-                fd, data)
-        f = self.get_file(fd, throw=False)
-        f.write(data)
-        return len(data)
-
-    def check_path(self, vpathname, flags):
-        pass
-
-    def do_ll_os__ll_os_open(self, vpathname, flags, mode):
-        # Normalize the pathname within the sandbox fs
-        # print('os_open', vpathname, flags, mode, self.tmpdir)
-        absvfilename = os.path.normpath(os.path.join(self.virtual_cwd, vpathname))
-        # print('absvfilename', absvfilename)
-        # If this is readonly, don't attempt to creat path and file
-        if flags != os.O_RDONLY:
-            # print('write')
-            if absvfilename.startswith( '/tmp/'):
-                filename = self.tmpdir + absvfilename[4:]
-                # print('filename', filename)
-                # make the file and parent dirs before opening it.
-                if not os.path.exists(os.path.dirname(filename)):
-                    try:
-                        # print('making path', os.path.dirname(filename))
-                        os.makedirs(os.path.dirname(filename))
-                    except OSError as exc: # Guard against race condition
-                        if exc.errno != errno.EEXIST:
-                            raise
-                # Hack to ensure the file exists in the real fs
-                # print('touching file', filename)
-                open(filename, "a").close()
-        else:
-            # print('read only')
-            pass
-
-        node = self.get_node(vpathname)
-        #if flags & (os.O_RDONLY|os.O_WRONLY|os.O_RDWR) != os.O_RDONLY:
-        #    raise OSError(errno.EPERM, "write access denied")
-        # all other flags are ignored
-        if type(node) is RealWritableFile:
-            f = node.open()
-        else:
-            f = node.open()
-        return self.allocate_fd(f, node)
-
-
-    def build_virtual_root(self):
-        # build a virtual file system:
-        # * can access its own executable
-        # * can access the pure Python libraries
-        # * can access the temporary usession directory as /tmp
-        exclude = ['.pyc', '.pyo']
-        if self.tmpdir is None:
-            tmpdirnode = Dir({})
-        else:
-            tmpdirnode = RealWritableDir(self.tmpdir, exclude=exclude)
-        libroot = str(LIB_ROOT)
-
-        return Dir({
-            'bin': Dir({
-                'pypy-c': RealFile(self.executable, mode=0111),
-                'lib-python': RealDir(os.path.join(libroot, 'lib-python'),
-                                      exclude=exclude),
-                'lib_pypy': RealDir(os.path.join(libroot, 'lib_pypy'),
-                                      exclude=exclude),
-                }),
-             'tmp': tmpdirnode,
-             })
 
 def main():
     from getopt import getopt      # and not gnu_getopt!
@@ -301,7 +322,6 @@ def main():
     if not multiarch_triple:
         from subprocess import check_output
         multiarch_triple = check_output(('gcc', '--print-multiarch')).strip()
-
 
     sandproc = PyPySandboxedProc('/usr/lib/pypy-sandbox/pypy-c-sandbox',
                                  extraoptions + arguments,

@@ -11,6 +11,13 @@ https://docs.djangoproject.com/en/1.9/ref/settings/
 """
 
 import os
+import djcelery
+
+djcelery.setup_loader()
+
+
+def here(x):
+    return os.path.join(os.path.abspath(os.path.dirname(__file__)), x)
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -25,7 +32,13 @@ SECRET_KEY = 'u_8z^%l6%&(^3@e2frvurq868+#ara-cqg1via1w-80-bme16o'
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['*']
+STATIC_ROOT = here('../static_root')
+STATICFILES_DIRS = [
+    here('../static')
+]
+
+
 
 
 # Application definition
@@ -39,9 +52,14 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'rest_framework',
     'django_extensions',
+    'djcelery',
+    'kombu.transport.django',
+    'cacheback',
+    'tsampi',
 ]
 
 MIDDLEWARE_CLASSES = [
+    #'django.middleware.cache.UpdateCacheMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -50,6 +68,7 @@ MIDDLEWARE_CLASSES = [
     'django.contrib.auth.middleware.SessionAuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    #'django.middleware.cache.FetchFromCacheMiddleware',
 ]
 
 ROOT_URLCONF = 'tsampi_server.urls'
@@ -126,8 +145,24 @@ STATIC_URL = '/static/'
 
 TSAMPI_SANDBOX_EXEC = '/code/tsampi-sandbox'
 
+BROKER_URL = 'django://'
+CELERY_ACCEPT_CONTENT = ['json']
+CELERY_TASK_SERIALIZER = 'json'
+CELERY_RESULT_BACKEND='djcelery.backends.database:DatabaseBackend'
+
+CACHEBACK_TASK_QUEUE = 'celery'
+
+CACHES = {
+    'default': {
+        'BACKEND': 'django.core.cache.backends.db.DatabaseCache',
+        'TIMEOUT': None,
+        'LOCATION': 'cache_table',
+
+    }
+}
+
 try:
-    from local_settings import *
+    from .local_settings import *
 except ImportError as e:
     print(e)
 

@@ -36,6 +36,8 @@ repo = Repo(TSAMPI_HOME)
 repo.git.config('gpg.program', here('./gpg-with-fingerprint'))
 # gpg = gnupg.GPG(homedir=here('keys'))
 
+def reload_repo():
+    repo = Repo(TSAMPI_HOME)
 
 def validate(branch='master'):
 
@@ -131,9 +133,11 @@ def zeros():
 def commit(path='.', key=None):
     # if not key:
     #    key = assert_keys()
+    repo.config_writer().set_value(section='user', option='name',value='foo').set_value(section='user', option='email',value='foo@bar.com').release()
+
     for i in range(0, 10000):
         repo.git.add(path)
-        repo.git.commit(m=str(i))
+        repo.git.commit("-m", str(i))
         sha = repo.head.commit.hexsha
         print(sha, i)
         if validate_commit(repo.head.commit):
@@ -196,25 +200,25 @@ def push():
 
 
 def call_tsampi_chain(app=None, jsonrpc=None):
-        app_and_rpc = []
+    app_and_rpc = []
 
-        if app:
-            app_and_rpc.append(app)
+    if app:
+        app_and_rpc.append(app)
 
-            if jsonrpc:
-                app_and_rpc.extend(['--jsonrpc', jsonrpc])
+        if jsonrpc:
+            app_and_rpc.extend(['--jsonrpc', jsonrpc])
 
-        out = subprocess.check_output([settings.TSAMPI_SANDBOX_EXEC,
-                                       '--tmp',
-                                       repo.working_tree_dir,
-                                       'tsampi', 'apps']  + app_and_rpc,
-                                      universal_newlines=True,
-                                      timeout=TIMEOUT,
-                                      )
-        print('=' * 10)
-        print('out: \n' + out)
-        print('=' * 10)
-        return json.loads(out)
+    out = subprocess.check_output([settings.TSAMPI_SANDBOX_EXEC,
+                                   '--tmp',
+                                   repo.working_tree_dir,
+                                   'tsampi', 'apps']  + app_and_rpc,
+                                  universal_newlines=True,
+                                  timeout=TIMEOUT,
+                                  )
+    print('=' * 10)
+    print('out: \n' + out)
+    print('=' * 10)
+    return json.loads(out)
 
 def list_apps():
     return call_tsampi_chain()

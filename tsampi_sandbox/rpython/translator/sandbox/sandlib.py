@@ -60,7 +60,11 @@ def write_message(g, msg, resulttype=None):
         if sys.version_info < (2, 4):
             marshal.dump(msg, g)
         else:
-            marshal.dump(msg, g, 0)
+            try:
+                marshal.dump(msg, g, 0)
+            except:
+                print(msg)
+                raise
     elif resulttype is RESULTTYPE_STATRESULT:
         # Hand-coded marshal for stat results that mimics what rmarshal expects.
         # marshal.dump(tuple(msg)) would have been too easy. rmarshal insists
@@ -302,7 +306,9 @@ class SandboxedProc(object):
         except AttributeError:
             raise RuntimeError("no handler for this function")
         resulttype = getattr(handler, 'resulttype', None)
-        return handler(*args), resulttype
+        result = handler(*args), resulttype
+        #print('handle_message', handler.__name__, args, '=>' , result)
+        return result
 
 
 class SimpleIOSandboxedProc(SandboxedProc):
@@ -459,7 +465,8 @@ class VirtualizedSandboxedProc(SandboxedProc):
 
     def do_ll_os__ll_os_stat(self, vpathname):
         node = self.get_node(vpathname)
-        return node.stat()
+        stat = node.stat()
+        return stat
     do_ll_os__ll_os_stat.resulttype = RESULTTYPE_STATRESULT
 
     do_ll_os__ll_os_lstat = do_ll_os__ll_os_stat

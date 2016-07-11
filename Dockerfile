@@ -23,7 +23,8 @@ curl \
 vim \
 libpq-dev \
 python-virtualenv \
-python-pypy.sandbox
+python-pypy.sandbox \
+rlwrap
 
 
 RUN virtualenv -p python3 /var/env/

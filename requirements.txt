@@ -6,3 +6,8 @@ djangorestframework==3.3.3
 psycopg2==2.6.1
 django-extensions
 markdown
+ipython
+ipdb
+celery
+django-celery
+django-cacheback[celery]
