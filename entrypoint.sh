@@ -15,6 +15,9 @@ case "$1" in
         cd /code/tsampi_server/
         /var/env/bin/python manage.py "${@:2}"
     ;;
+    sandbox )
+        rlwrap /code/tsampi-sandbox "${@:2}"
+    ;;
     bash )
         bash "${@:2}"
     ;;

@@ -5,20 +5,7 @@ server:
   build: .
   volumes:
     - .:/code/
-  hostname: tsampi
-  command: manage runserver 0.0.0.0:8000
-  ports:
-    - "8000:8000"
-  links:
-    - db
-  entrypoint:
-    - bash
-    - /code/entrypoint.sh
-
-worker:
-  build: .
-  volumes:
-    - .:/code/
+    - ./docker_home:/root/
   hostname: tsampi
   command: manage runserver 0.0.0.0:8000
   ports:

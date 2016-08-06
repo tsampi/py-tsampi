@@ -1,4 +1,6 @@
 repos/
+# keys for private repos and commit sigs
+docker_home
 *.swp
 # Created by https://www.gitignore.io/api/django,python
 

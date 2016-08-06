@@ -1,18 +1,16 @@
 #!/usr/bin/env python3
 
-from git import Repo
+from git import Repo, GitCommandError
+import uuid
+import glob
 import subprocess
-# import gnupg
+import gnupg
 import os
 import logging
-import glob
-import random
-from hashlib import sha1
-import string
 import json
 import cgitb
-from tsampi_server import settings
-
+import tempfile
+from django.conf import settings
 cgitb.enable(format='text', context=10)
 
 
@@ -22,27 +20,27 @@ def here(x):
 
 # os.environ['GNUPGHOME'] = here('keys')
 
-TSAMPI_HOME = os.path.expanduser('/code/repos/tsampi-0')
-TIMEOUT = 30
 # this module
 me = os.path.splitext(os.path.split(__file__)[1])[0]
 
 
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
 
 
-repo = Repo(TSAMPI_HOME)
-repo.git.config('gpg.program', here('./gpg-with-fingerprint'))
+# repo.git.config('gpg.program', here('./gpg-with-fingerprint'))
 # gpg = gnupg.GPG(homedir=here('keys'))
 
-def reload_repo():
-    repo = Repo(TSAMPI_HOME)
+def validate(repo_path, branch='master'):
+    repo = Repo(repo_path)
 
-def validate(branch='master'):
+    # There should be only one root commit
+    root_commits = repo.git.rev_list('--max-parents=0', 'HEAD').splitlines()
+    if len(root_commits) > 1:
+        raise Exception('Too many root commits: %s.' % root_commits)
 
     for commit in repo.iter_commits(branch):
-        valid = validate_commit(commit)
+        errors = validate_commit(repo_path, commit)
+        valid = errors == {}
         if not valid:
             yield False, commit
         else:
@@ -50,74 +48,94 @@ def validate(branch='master'):
     repo.git.checkout(branch)
 
 
-def validate_commit(commit):
+def load_gpg_keys(repo_path):
+    gpg = gnupg.GPG()
+    for key_path in glob.glob('../repos/tsampi-0/keys/*'):
+        with open(key_path) as f:
+            gpg.import_keys(f.read())
+
+
+def validate_commit(repo_path, commit):
+    repo = Repo(repo_path)
+    repo.git.config('gpg.program', '../../gpg-with-fingerprint')
     # print(repo.git.show(commit.hexsha))
+
+    if isinstance(commit, str):
+        commit = repo.commit(commit)
 
     # is it a valid signiture
     try:
         repo.git.verify_commit(commit.hexsha)
-        print('Valid signiture! {}'.format(commit.hexsha))
+        logger.debug('Valid signiture! {}'.format(commit.hexsha))
     except Exception as e:
-        logger.debug(
-            'Invalid gpg  signiture {} Error: {}'.format(commit.hexsha, e))
+        logger.warn(
+            'Oh noes! Invalid gpg signiture {} Error: {}'.format(commit.hexsha, e))
 
     for p in commit.parents:
+        logger.info(p.hexsha)
         repo.git.checkout(p.hexsha)
         validate_input = repo.git.show(
             commit.hexsha, c=True, show_signature=True)
-        out = subprocess.check_output(['pypy-sandbox',
-                                       '--tmp',
-                                       repo.working_tree_dir,
-                                       'tsampi', 'validate'],
-                                      universal_newlines=True,
-                                      input=validate_input,
-                                      timeout=TIMEOUT,
-                                      stderr=subprocess.STDOUT)
-        print('=' * 10)
-        print('out: ', '\n'.join(out.splitlines()[1:]))
-        print('=' * 10)
-        if 'ValidationError' in out:
-            # print(commit.hexsha, commit.parents, '=' * 10)
-            # print('------')
-            # print(repo.git.show(commit.hexsha, c=True))
-            # print('-------')
-            print('Invalid Commit!', commit)
-            return False
+        process = subprocess.Popen(['pypy-sandbox',
+                                    '--tmp',
+                                    repo.working_tree_dir,
+                                    'tsampi', 'validate'],
+                                   universal_newlines=True,
+                                   stdin=subprocess.PIPE,
+                                   stdout=subprocess.PIPE,
+                                   stderr=subprocess.PIPE)
+        raw_out, raw_err = process.communicate(input=validate_input)
 
-    logger.info('Valid Commit!', commit)
-    return True
+        logger.info('=' * 10)
+        logger.info(validate_input)
+        logger.info('=' * 10)
+        logger.info('out: %s', raw_out)
+        logger.info('err: %s', raw_err)
+        logger.info('=' * 10)
+        out = json.loads(raw_out)
+        # no news is good news
+        if out:
+            logger.info('Invalid Commit: %s', commit)
+            logger.info(out)
+            return out
+
+    logger.info('Valid Commit!, %s', commit)
+    return {}
 
 
 def generate_key():
     NAME = input("Name: ")
     NAME_EMAIL = input('Email: ')
-    EXPIRE_DATE = '2016-05-01'
+    #EXPIRE_DATE = '2016-05-01'
     KEY_TYPE = 'RSA'
-    KEY_LENGTH = 1024
+    KEY_LENGTH = 2048
     KEY_USAGE = 'sign,encrypt,auth'
     allparams = {'name_real': NAME,
                  'name_email': NAME_EMAIL,
-                 'expire_date': EXPIRE_DATE,
+                 #'expire_date': EXPIRE_DATE,
                  'key_type': KEY_TYPE,
                  'key_usage': KEY_USAGE,
                  'key_length': KEY_LENGTH,
                  }
+    gpg = gnupg.GPG()
     batchfile = gpg.gen_key_input(**allparams)
 
     key = gpg.gen_key(batchfile)
     fingerprint = key.fingerprint
 
     if not fingerprint:
-        logger.error("Key creation seems to have failed: %s" % key.status)
+        logger.error("Key creation seems to have failed: %s" % key)
         return None, None
     return key, fingerprint
 
 
-def zeros():
+def zeros(repo_path):
+    repo = Repo(repo_path)
+
     added = 0
     removed = 0
     for line in repo.git.diff().splitlines():
-        print(line.strip())
+        logger.info(line.strip())
         if line.startswith("+"):
             added += len(line)
 
@@ -126,111 +144,137 @@ def zeros():
 
     changes = removed + added
     leading_zeros = len(str(changes)) * '0'
-    print("Changes: ", changes)
+    logger.info("Changes: %", changes)
     return leading_zeros
 
 
-def commit(path='.', key=None):
-    # if not key:
-    #    key = assert_keys()
-    repo.config_writer().set_value(section='user', option='name',value='foo').set_value(section='user', option='email',value='foo@bar.com').release()
+def call_tsampi_chain(repo_uri, app=None, jsonrpc=None, commit=False, push=False):
+    with tempfile.TemporaryDirectory() as tmp_path:
+        logger.info('tmp git repo: %s', tmp_path)
+        cloned_repo = Repo.clone_from(repo_uri, tmp_path)
+        rpc_out, diff = tsampi_chain(
+            cloned_repo.working_tree_dir, app, jsonrpc)
+        errors = {}
+        # There should be something to commit
+        if commit and diff:
+            success, errors = make_commit(cloned_repo.working_tree_dir)
+            if push and success:
+                try:
+                    #import IPython; IPython.embed()
+                    push_repo(cloned_repo.working_tree_dir, attempts=10)
+                except Exception as e:
+                    # push this to a branch and raise
+                    new_branch = 'failed-%s' % uuid.uuid4()
+                    push_info = cloned_repo.remotes.origin.push(
+                        'master:' + new_branch)
+                    raise Exception(
+                        'Original exception: %s\nChanges pushed to branch: %s' % (e, new_branch))
+            if not success:
+                return rpc_out, diff, errors
 
-    for i in range(0, 10000):
-        repo.git.add(path)
-        repo.git.commit("-m", str(i))
-        sha = repo.head.commit.hexsha
-        print(sha, i)
-        if validate_commit(repo.head.commit):
-            repo.git.checkout('master')
-            return
-        repo.git.checkout('master')
-        repo.git.reset('HEAD~')
-
-
-def random_bantz_hash():
-    paths = glob.glob(os.path.join(TSAMPI_HOME, 'data', '*'))
-    if not paths:
-        return ""
-    filepath = random.choice(paths)
-    bantz_hash = os.path.basename(filepath)
-    print(bantz_hash)
-    return bantz_hash
-
-
-def all_bantz_hashes():
-    filepaths = glob.iglob(os.path.join(TSAMPI_HOME, 'data', '*'))
-    for filepath in filepaths:
-        bantz_hash = os.path.basename(filepath)
-        yield bantz_hash
+        return {'rpc_response': rpc_out, 'diff': diff, 'tsampi_errors': errors}
 
 
-def get_bantz(bantz_hash):
-    with open(os.path.join(TSAMPI_HOME, 'data', bantz_hash), 'rb') as f:
-        data = Bencoder.decode(f.read().decode())
-    return data
-
-
-def random_bantz():
-    bantz_hash = random_bantz_hash()
-    return get_bantz(bantz_hash)
-
-
-def all_bantz():
-    for bantz_hash in all_bantz_hashes():
-        yield get_bantz(bantz_hash)
-
-
-def make_random_data():
-    data = ''.join(random.choice(string.printable)
-                   for i in range(random.randrange(5, 1000)))
-    random_parent = random_bantz_hash()
-    return save_bantz(random_parent, data)
-
-
-def save_bantz(parent_sha1, data):
-    bc = Bencoder.encode({'parent_sha1': parent_sha1 or '', 'data': data}).encode()
-    name = sha1(bc).hexdigest()
-    with open('/home/tim/tsampi-bantz/data/' + name, 'wb') as f:
-        f.write(bc)
-    return name
-
-
-def push():
-    repo.git.push()
-
-
-def call_tsampi_chain(app=None, jsonrpc=None):
+def tsampi_chain(repo_path, app=None, jsonrpc=None):
+    # shallow clone of repo
+    # All interaction with the sandbox should be with a freshly cloned repo.
+    repo = Repo(repo_path)
     app_and_rpc = []
-
     if app:
         app_and_rpc.append(app)
-
-        if jsonrpc:
-            app_and_rpc.extend(['--jsonrpc', jsonrpc])
+    if jsonrpc and app:
+        app_and_rpc.extend(['--jsonrpc', jsonrpc])
 
     out = subprocess.check_output([settings.TSAMPI_SANDBOX_EXEC,
                                    '--tmp',
                                    repo.working_tree_dir,
-                                   'tsampi', 'apps']  + app_and_rpc,
+                                   'tsampi', 'apps'] + app_and_rpc,
                                   universal_newlines=True,
-                                  timeout=TIMEOUT,
+                                  timeout=settings.TSAMPI_TIMEOUT,
                                   )
-    print('=' * 10)
-    print('out: \n' + out)
-    print('=' * 10)
-    return json.loads(out)
+    repo.git.add(repo.working_tree_dir)
+    diff = repo.git.diff(cached=True)
+    logger.info('=' * 10)
+    logger.info('app: %s' % app)
+    logger.info('jsonrpc: %s' % jsonrpc)
+    logger.info('=' * 10)
+    logger.info('out: \n' + out)
+    logger.info('=' * 10)
+    logger.info(diff)
+    logger.info('=' * 10)
+    return json.loads(out), diff
 
-def list_apps():
-    return call_tsampi_chain()
+
+def make_commit(repo_path, key=None):
+    repo = Repo(repo_path)
+    # if not key:
+    #    key = assert_keys()
+    repo.config_writer().set_value(section='user', option='name', value='foo').set_value(
+        section='user', option='email', value='foo@bar.com').release()
+
+    if key:
+        repo.config_writer().set_value(
+            section='user', option='signingkey', value=key).release()
+
+    for i in range(0, 10000):
+        repo.git.add('.')
+        if key:
+            sign = "-S"
+        else:
+            sign = None
+
+        try:
+            repo.git.commit("-a", sign, "-m", str(i))
+        except GitCommandError as e:
+            logger.info(e)
+            return False, {'git': str(e)}
+
+        sha = repo.head.commit.hexsha
+        logger.info("sha: %s, %s", sha,i)
+
+        errors = validate_commit(repo_path, repo.head.commit)
+        logger.info('errors %s', repr(errors))
+        if errors == {}:  # no problems!
+            logger.info('done commiting')
+            repo.git.checkout('master')
+            return True, errors
+
+        # Try again for proper POW
+        repo.git.checkout('master')
+        repo.git.reset('HEAD~')
+
+        # Just kidding, somethign else wrong happened, bail out
+        if errors != {'pow': False}:
+            logger.info('not going to try anymore')
+            return False, errors
+
+    # POW was too difficult
+    return False, errors
+
+
+def push_repo(repo_path, attempts=10):
+    repo = Repo(repo_path)
+    for i in range(attempts):
+        repo.remotes.origin.pull('master',  no_edit=True)
+        push_info = repo.remotes.origin.push('master')
+        if push_info:
+            # If there was not an error, don't try again
+            if not push_info[0].REJECTED & push_info[0].flags:
+                return
+    raise Exception(push_info.summary)
+
+
 
 # TODO turn this in to fetch, validate, merge.
 # Check that both have the same parent.
 
-def pull():
+
+def pull(repo_path):
+    repo = Repo(repo_path)
     for r in repo.remotes:
         try:
             for remote in r.fetch():
-                print(r.name, remote)
+                logger.info(r.name, remote)
                 try:
                     if not all(validate(remote)):
                         logger.debug(
@@ -243,79 +287,7 @@ def pull():
                 try:
                     repo.git.pull(r.name, 'master')
                 except Exception as e:
-                    print(e)
+                    logger.exception(e)
                     repo.git.commit(m='merging conflict', a=True)
         except Exception as e:
             logger.exception(e)
-
-
-def assert_keys():
-    if len(gpg.list_keys()) == 0:
-        print("Hey there, seems like you have not created your Tsampi ID")
-        key, fingerprint = generate_key()
-
-    fingerprint = gpg.list_keys()[0]['fingerprint']
-    public_key_path = os.path.join(TSAMPI_HOME, 'keys', fingerprint)
-
-    if not os.path.isfile(public_key_path):
-        with open(public_key_path, 'w') as public_key_file:
-            public_key_file.write(gpg.export_keys(fingerprint))
-
-        commit(os.path.join('keys', fingerprint), fingerprint)
-
-    return fingerprint
-
-
-#  ====== SERVER ======
-from django.http import HttpResponse
-from django.conf.urls import url
-from django.shortcuts import redirect
-from django.shortcuts import render
-from django.views.decorators.csrf import csrf_protect
-
-
-DEBUG = True
-ROOT_URLCONF = 'bantz'
-DATABASES = {'default': {}}
-SECRET_KEY = "sadfjnsadkfjn$@G#TBegf2#GrTegravfdgfdNHHWgrebtnwh5ERB"
-TEMPLATE_DIRS = [
-    here('.')
-]
-MIDDLEWARE_CLASSES = [
-    'django.middleware.common.CommonMiddleware',
-    'django.middleware.csrf.CsrfViewMiddleware',
-]
-
-INSTALLED_APPS = [
-    'django.contrib.contenttypes',
-    'django.contrib.staticfiles',
-]
-
-import django
-django.setup()
-from django.views.decorators.csrf import csrf_exempt
-
-def index(request):
-    bantz_hash = random_bantz_hash()
-    return redirect('/' + bantz_hash)
-
-
-def bantz_view(request, bantz_hash):
-    bantz = get_bantz(bantz_hash)
-    context = {'bantz': bantz}
-    if request.method == "POST":
-        data = request.POST['data']
-        parent_sha1 = request.POST['parent_sha1']
-        bantz_hash = save_bantz(parent_sha1, data)
-        return redirect('/' + bantz_hash)
-
-    return render(request, 'bantz.html', context)
-
-
-
-urlpatterns = [
-    url(r'^$', index),
-    url(r'^(?P<bantz_hash>\w+)?$', bantz_view),
-]
-
-

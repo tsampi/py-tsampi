@@ -144,6 +144,12 @@ USE_TZ = True
 STATIC_URL = '/static/'
 
 TSAMPI_SANDBOX_EXEC = '/code/tsampi-sandbox'
+# This is the path within the docker container
+#TSAMPI_HOME = os.path.expanduser('/code/repos/tsampi-0')
+
+# Will be read only, set to repo you control to have write access
+TSAMPI_CHAIN = 'https://github.com/tsampi/tsampi-0.git'
+TSAMPI_TIMEOUT = 30
 
 BROKER_URL = 'django://'
 CELERY_ACCEPT_CONTENT = ['json']
@@ -155,11 +161,32 @@ CACHEBACK_TASK_QUEUE = 'celery'
 CACHES = {
     'default': {
         'BACKEND': 'django.core.cache.backends.db.DatabaseCache',
-        'TIMEOUT': None,
+        'TIMEOUT': 1,
         'LOCATION': 'cache_table',
 
     }
 }
+
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
+        },
+    },
+    'loggers': {
+        'django': {
+            'handlers': ['console'],
+            'level': os.getenv('DJANGO_LOG_LEVEL', 'INFO'),
+        },
+        'tsampi.utils': {
+            'handlers': ['console'],
+            'level': 'DEBUG',
+        },
+    },
+}
+
 
 try:
     from .local_settings import *

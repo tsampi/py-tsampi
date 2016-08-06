@@ -37,6 +37,9 @@ from rpython.translator.sandbox.vfs import Dir, RealDir, RealFile
 
 LIB_ROOT = '/code/repos/tsampi-0/tsampi/pypy/'
 
+# Maps flag constants to the string eg. 'a+'
+# https://docs.python.org/2/library/os.html#open-constants
+OPEN_FLAGS = {0: 'r', 2: 'r+', 65: 'a', 66: 'a+', 577: 'w', 578: 'w+'}
 
 class RealWritableFile(RealFile):
     read_only = False
@@ -58,10 +61,10 @@ class RealWritableFile(RealFile):
             e_mode |= (s.st_mode & stat.S_IRWXG) >> 3
         return (e_mode & mode) == mode
 
-    def open(self):
+    def open(self, flags):
         # print('opening', self)
         try:
-            return open(self.path, 'r+')
+            return open(self.path, OPEN_FLAGS[flags])
         except IOError as e:
             raise OSError(e.errno, "open failed")
 
@@ -238,7 +241,7 @@ class PyPySandboxedProc(VirtualizedSandboxedProc, SimpleIOSandboxedProc):
         node = self.get_node(vpathname)
         # all other flags are ignored
         if type(node) is RealWritableFile:
-            f = node.open()
+            f = node.open(flags)
         else:
             if flags & (os.O_RDONLY|os.O_WRONLY|os.O_RDWR) != os.O_RDONLY:
                raise OSError(errno.EPERM, "write access denied")
@@ -254,8 +257,8 @@ class PyPySandboxedProc(VirtualizedSandboxedProc, SimpleIOSandboxedProc):
         if self.tmpdir is None:
             tmpdirnode = Dir({})
         else:
-            #tmpdirnode = RealWritableDir(self.tmpdir, exclude=exclude)
-            tmpdirnode = RealDir(self.tmpdir, exclude=exclude)
+            tmpdirnode = RealWritableDir(self.tmpdir, exclude=exclude)
+            #tmpdirnode = RealDir(self.tmpdir, exclude=exclude)
         libroot = str(LIB_ROOT)
 
         return Dir({

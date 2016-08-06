@@ -11,3 +11,5 @@ ipdb
 celery
 django-celery
 django-cacheback[celery]
+Werkzeug
+python-gnupg

@@ -10,10 +10,11 @@ from . import serializers
 from celery.result import AsyncResult
 from django.shortcuts import redirect
 from cacheback.decorators import cacheback
-
+from django.conf import settings
 
 
 TsampiApp = namedtuple('TsampiApp', ['app_name'])
+
 
 class AppList(generics.ListAPIView):
     """
@@ -22,10 +23,10 @@ class AppList(generics.ListAPIView):
     serializer_class = serializers.AppSerializer
 
     def get_queryset(self):
-        apps = cacheback(10)(utils.list_apps)()
-        app_dict =  [TsampiApp(app_name=name) for name in apps]
+        result = cacheback(10)(tasks.call_tsampi_chain)(settings.TSAMPI_CHAIN)
+        app_dict = [TsampiApp(app_name=name)
+                    for name in result['rpc_response']]
         return app_dict
-
 
 
 class AppDetail(APIView):
@@ -42,14 +43,17 @@ class AppDetail(APIView):
     '''
 
     def post(self, request, app_name):
-        result = tasks.call_tsampi_chain.delay(app_name, json.dumps(request.data))
+        result = tasks.call_tsampi_chain.delay(
+            settings.TSAMPI_CHAIN, app_name, json.dumps(request.data), commit=True, push=True)
         response = redirect('task-detail', result.task_id)
         response.status_code = 303
         return response
 
     def get(self, request, app_name):
-        d = cacheback(10)(utils.call_tsampi_chain)(app_name)
-        return Response(d)
+        d = cacheback(10)(tasks.call_tsampi_chain)(
+            settings.TSAMPI_CHAIN, app_name)
+        return Response(d['rpc_response'])
+
 
 class TaskDetail(APIView):
     serializer_class = serializers.TaskSerializer

@@ -6,7 +6,11 @@ RUN locale-gen --no-purge en_US.UTF-8
 ENV LC_ALL en_US.UTF-8
 RUN update-locale LANG=en_US.UTF-8
 
-RUN apt-get update -qq && apt-get --yes --force-yes install gcc \
+
+RUN apt-get update -qq && \
+apt-get install --yes --force-yes python-software-properties software-properties-common && \
+add-apt-repository ppa:git-core/ppa -y && \
+apt-get update -qq && apt-get --yes --force-yes install gcc \
 git \
 build-essential \
 python3-dev \
