@@ -170,12 +170,14 @@ def merge_from_peer(repo_uri, peer_uri, push=False):
             if not all(v for v, c in validation_results):
                 logger.debug(
                     'Invalid commit error on remote:{} \n{}'.format(remote, validation_results))
-                continue
+                return False
         except Exception as e:
             logger.error(
                 'Validation Exception on remote:{}\n{}'.format(remote, e))
+                return False
         if push:
             push_repo(repo.working_tree_dir, attempts=10)
+        return True
 
 
 def call_tsampi_chain(repo_uri, app=None, jsonrpc=None, commit=False, push=False):
