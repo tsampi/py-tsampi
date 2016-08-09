@@ -147,9 +147,11 @@ TSAMPI_SANDBOX_EXEC = '/code/tsampi-sandbox'
 # This is the path within the docker container
 #TSAMPI_HOME = os.path.expanduser('/code/repos/tsampi-0')
 
-# Will be read only, set to repo you control to have write access
+# Set to repo you control to have write access
 TSAMPI_CHAIN = 'https://github.com/tsampi/tsampi-0.git'
 TSAMPI_TIMEOUT = 30
+TSAMPI_PEER_REPOS = ['https://github.com/readevalprint/tsampi-0.git']
+
 
 BROKER_URL = 'django://'
 CELERY_ACCEPT_CONTENT = ['json']

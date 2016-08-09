@@ -48,16 +48,24 @@ def validate(repo_path, branch='master'):
     repo.git.checkout(branch)
 
 
-def load_gpg_keys(repo_path):
+def refresh_gpg_keys(repo_path):
+    '''Removes all keys then load the keys in the current repo'''
+
+    # Super inefficient but it's ok for now
     gpg = gnupg.GPG()
-    for key_path in glob.glob('../repos/tsampi-0/keys/*'):
+    fingerprints = [k['fingerprint'] for k in gpg.list_keys()]
+    gpg.delete_keys(fingerprints)
+    keys_path = os.path.join(repo_path , 'keys/*')
+    for key_path in glob.glob(keys_path):
         with open(key_path) as f:
+            logger.info('loading key: %s', key_path)
             gpg.import_keys(f.read())
 
 
 def validate_commit(repo_path, commit):
     repo = Repo(repo_path)
     repo.git.config('gpg.program', '../../gpg-with-fingerprint')
+    refresh_gpg_keys(repo_path)
     # print(repo.git.show(commit.hexsha))
 
     if isinstance(commit, str):
@@ -146,6 +154,28 @@ def zeros(repo_path):
     leading_zeros = len(str(changes)) * '0'
     logger.info("Changes: %", changes)
     return leading_zeros
+
+
+def merge_from_peer(repo_uri, peer_uri, push=False):
+    with tempfile.TemporaryDirectory() as tmp_path:
+        logger.info('tmp git merge repo: %s', tmp_path)
+        repo = Repo.clone_from(repo_uri, tmp_path)
+        repo.config_writer().set_value(section='user', option='name', value='foo').set_value(
+            section='user', option='email', value='foo@bar.com').release()
+
+        repo.git.pull(peer_uri, '--no-edit')
+        print(repo.git.log('--graph'))
+        try:
+            validation_results = list(validate(repo.working_tree_dir))
+            if not all(v for v, c in validation_results):
+                logger.debug(
+                    'Invalid commit error on remote:{} \n{}'.format(remote, validation_results))
+                continue
+        except Exception as e:
+            logger.error(
+                'Validation Exception on remote:{}\n{}'.format(remote, e))
+        if push:
+            push_repo(repo.working_tree_dir, attempts=10)
 
 
 def call_tsampi_chain(repo_uri, app=None, jsonrpc=None, commit=False, push=False):
@@ -276,13 +306,14 @@ def pull(repo_path):
             for remote in r.fetch():
                 logger.info(r.name, remote)
                 try:
-                    if not all(validate(remote)):
+                    validation_results = list(validate(remote))
+                    if not all(v for v, c in validation_results):
                         logger.debug(
-                            'Validation error on remote:{}'.format(remote))
+                            'Invalid commit error on remote:{} \n{}'.format(remote, validation_results))
                         continue
                 except Exception as e:
                     logger.error(
-                        'Validation error on remote:{}\n{}'.format(remote, e))
+                        'Validation Exception on remote:{}\n{}'.format(remote, e))
                     continue
                 try:
                     repo.git.pull(r.name, 'master')
