@@ -174,7 +174,7 @@ def merge_from_peer(repo_uri, peer_uri, push=False):
         except Exception as e:
             logger.error(
                 'Validation Exception on remote:{}\n{}'.format(remote, e))
-                return False
+            return False
         if push:
             push_repo(repo.working_tree_dir, attempts=10)
         return True
