@@ -17,6 +17,9 @@ python3-dev \
 python3-pip \
 python-pip \
 binutils \
+libmysqlclient-dev \
+python-mysqldb \
+mysql-client \
 libproj-dev \
 libffi-dev \
 libssl-dev \
@@ -39,3 +42,5 @@ ADD ./requirements.txt /code/requirements.txt
 RUN /var/env/bin/pip install -r /code/requirements.txt
 
 ADD . /code
+
+ENTRYPOINT  /code/entrypoint.sh manage runserver 0.0.0.0:8000

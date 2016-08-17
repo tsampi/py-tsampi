@@ -11,9 +11,22 @@ from celery.result import AsyncResult
 from django.shortcuts import redirect
 from cacheback.decorators import cacheback
 from django.conf import settings
+from django.http import HttpResponse
 
 
 TsampiApp = namedtuple('TsampiApp', ['app_name'])
+
+
+def index_view(request):
+    html = '''<pre>_______                        _
+ |__   __|                      (_)
+    | |___  __ _ _ __ ___  _ __  _
+    | / __|/ _` | '_ ` _ \| '_ \| |
+    | \__ \ (_| | | | | | | |_) | |
+    |_|___/\__,_|_| |_| |_| .__/|_|
+                          | |
+                          |_|       </pre>'''
+    return HttpResponse(html)
 
 
 class AppList(generics.ListAPIView):

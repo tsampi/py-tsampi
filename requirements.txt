@@ -1,15 +1,16 @@
-flake8==2.5.4
-Django==1.9.5
-uWSGI==2.0.12
-GitPython==1.0.2
-djangorestframework==3.3.3
-psycopg2==2.6.1
+flake8
+Django
+uWSGI
+GitPython
+djangorestframework
+psycopg2
 django-extensions
 markdown
 ipython
 ipdb
 celery
-django-celery
+-e git+https://github.com/iXce/django-celery.git@24016a940b8e36e9116181c429c545f25fc2d922#egg=djcelery
 django-cacheback[celery]
 Werkzeug
 python-gnupg
+mysqlclient
