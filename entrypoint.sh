@@ -2,6 +2,10 @@
 set -e
 
 
+# Commands to make kubernetes happy because you cannot set permission bits in the config and readonly means known_hosts cannot be updated
+chmod 400 ~/.ssh/id_rsa || echo "Cannot set permsissions on id_rsa for some reason"
+
+
 # Define help message
 show_help() {
     echo """
@@ -20,6 +24,9 @@ case "$1" in
     ;;
     bash )
         bash "${@:2}"
+    ;;
+    uwsgi )
+         /var/env/bin/uwsgi "${@:2}"
     ;;
     *)
         show_help

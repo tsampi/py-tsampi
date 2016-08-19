@@ -42,5 +42,6 @@ ADD ./requirements.txt /code/requirements.txt
 RUN /var/env/bin/pip install -r /code/requirements.txt
 
 ADD . /code
+RUN   /code/entrypoint.sh manage collectstatic --noinput
 
-ENTRYPOINT  /code/entrypoint.sh manage runserver 0.0.0.0:8000
+ENTRYPOINT  /code/entrypoint.sh manage runserver 0.0.0.0:8080

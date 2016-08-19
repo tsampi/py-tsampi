@@ -149,7 +149,7 @@ TSAMPI_SANDBOX_EXEC = '/code/tsampi-sandbox'
 #TSAMPI_HOME = os.path.expanduser('/code/repos/tsampi-0')
 
 # Set to repo you control to have write access
-TSAMPI_CHAIN = 'https://github.com/tsampi/tsampi-0.git'
+TSAMPI_CHAIN = os.environ.get('TSAMPI_CHAIN', 'https://github.com/tsampi/tsampi-0.git')
 TSAMPI_TIMEOUT = 30
 TSAMPI_PEER_REPOS = ['https://github.com/readevalprint/tsampi-0.git']
 
