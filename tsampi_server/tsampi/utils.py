@@ -291,7 +291,7 @@ def make_commit(repo_path, key=None):
 def push_repo(repo_path, attempts=10):
     repo = Repo(repo_path)
     for i in range(attempts):
-        repo.remotes.origin.pull('master',  no_edit=True)
+        repo.remotes.origin.pull('master', no_edit=True)
         push_info = repo.remotes.origin.push('master')
         if push_info:
             # If there was not an error, don't try again
