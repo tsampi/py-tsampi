@@ -39,8 +39,6 @@ STATICFILES_DIRS = [
 ]
 
 
-
-
 # Application definition
 
 INSTALLED_APPS = [
@@ -149,7 +147,8 @@ TSAMPI_SANDBOX_EXEC = '/code/tsampi-sandbox'
 #TSAMPI_HOME = os.path.expanduser('/code/repos/tsampi-0')
 
 # Set to repo you control to have write access
-TSAMPI_CHAIN = os.environ.get('TSAMPI_CHAIN', 'https://github.com/tsampi/tsampi-0.git')
+TSAMPI_CHAIN = os.environ.get(
+    'TSAMPI_CHAIN', 'https://github.com/tsampi/tsampi-0.git')
 TSAMPI_TIMEOUT = 30
 TSAMPI_PEER_REPOS = ['https://github.com/readevalprint/tsampi-0.git']
 
@@ -157,7 +156,7 @@ TSAMPI_PEER_REPOS = ['https://github.com/readevalprint/tsampi-0.git']
 BROKER_URL = 'django://'
 CELERY_ACCEPT_CONTENT = ['json']
 CELERY_TASK_SERIALIZER = 'json'
-CELERY_RESULT_BACKEND='djcelery.backends.database:DatabaseBackend'
+CELERY_RESULT_BACKEND = 'djcelery.backends.database:DatabaseBackend'
 
 CACHEBACK_TASK_QUEUE = 'celery'
 
@@ -195,4 +194,3 @@ try:
     from .local_settings import *
 except ImportError as e:
     print(e)
-

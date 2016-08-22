@@ -55,7 +55,7 @@ def refresh_gpg_keys(repo_path):
     gpg = gnupg.GPG()
     fingerprints = [k['fingerprint'] for k in gpg.list_keys()]
     gpg.delete_keys(fingerprints)
-    keys_path = os.path.join(repo_path , 'keys/*')
+    keys_path = os.path.join(repo_path, 'keys/*')
     for key_path in glob.glob(keys_path):
         with open(key_path) as f:
             logger.info('loading key: %s', key_path)
@@ -221,8 +221,9 @@ def tsampi_chain(repo_path, app=None, jsonrpc=None):
     out = subprocess.check_output([settings.TSAMPI_SANDBOX_EXEC,
                                    '--tmp',
                                    repo.working_tree_dir,
-                                    '--lib_root',
-                                   os.path.join(repo.working_tree_dir, './tsampi/pypy/'),
+                                   '--lib_root',
+                                   os.path.join(
+                                       repo.working_tree_dir, './tsampi/pypy/'),
                                    'tsampi', 'apps'] + app_and_rpc,
                                   universal_newlines=True,
                                   timeout=settings.TSAMPI_TIMEOUT,
@@ -265,7 +266,7 @@ def make_commit(repo_path, key=None):
             return False, {'git': str(e)}
 
         sha = repo.head.commit.hexsha
-        logger.info("sha: %s, %s", sha,i)
+        logger.info("sha: %s, %s", sha, i)
 
         errors = validate_commit(repo_path, repo.head.commit)
         logger.info('errors %s', repr(errors))
@@ -297,7 +298,6 @@ def push_repo(repo_path, attempts=10):
             if not push_info[0].REJECTED & push_info[0].flags:
                 return
     raise Exception(push_info.summary)
-
 
 
 # TODO turn this in to fetch, validate, merge.
