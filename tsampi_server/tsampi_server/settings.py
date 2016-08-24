@@ -96,8 +96,8 @@ WSGI_APPLICATION = 'tsampi_server.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
-        'NAME': os.environ.get('DATABASE_NAME', 'postgres'),
-        'USER': os.environ.get('DATABASE_USER', 'postgres'),
+        'NAME': os.environ.get('DATABASE_NAME', 'tsampi'),
+        'USER': os.environ.get('DATABASE_USER', 'root'),
         'PASSWORD': os.environ.get('DATABASE_PASSWORD', None),
         'HOST': os.environ.get('DATABASE_HOST', 'db'),
     }
@@ -152,6 +152,15 @@ TSAMPI_CHAIN = os.environ.get(
 TSAMPI_TIMEOUT = 30
 TSAMPI_PEER_REPOS = ['https://github.com/readevalprint/tsampi-0.git']
 
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': (
+        'rest_framework.authentication.SessionAuthentication',
+        'rest_framework.authentication.BasicAuthentication',
+    ),
+    'DEFAULT_PERMISSION_CLASSES': (
+        'rest_framework.permissions.IsAuthenticated',
+    )
+}
 
 BROKER_URL = 'django://'
 CELERY_ACCEPT_CONTENT = ['json']

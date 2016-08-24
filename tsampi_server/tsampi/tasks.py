@@ -21,3 +21,6 @@ def xsum(numbers):
 
 # Make a task version of call_chain
 call_tsampi_chain = shared_task(utils.call_tsampi_chain)
+
+# task version of merging
+merge_from_peer = shared_task(utils.merge_from_peer)

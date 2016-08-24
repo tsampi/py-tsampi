@@ -9,16 +9,19 @@ from . import tasks
 from . import serializers
 from celery.result import AsyncResult
 from django.shortcuts import redirect
+from django.contrib.sites.shortcuts import get_current_site
 from cacheback.decorators import cacheback
 from django.conf import settings
 from django.http import HttpResponse
+import git
 
 
+# don't need a django model, and a full class is still overkill
 TsampiApp = namedtuple('TsampiApp', ['app_name'])
 
 
 def index_view(request):
-    html = '''<pre>_______                        _
+    html = '''<pre> _______                        _
  |__   __|                      (_)
     | |___  __ _ _ __ ___  _ __  _
     | / __|/ _` | '_ ` _ \| '_ \| |
@@ -27,6 +30,18 @@ def index_view(request):
                           | |
                           |_|       </pre>'''
     return HttpResponse(html)
+
+class PullView(APIView):
+    serializer_class = serializers.GitUrlSerializer
+
+    def get(self, request):
+        return Response('submit a git url')
+
+    def post(self, request):
+        result = tasks.merge_from_peer.delay(settings.TSAMPI_CHAIN, request.data['git_url'], push=True)
+        response = redirect('task-detail', result.task_id)
+        response.status_code = 303
+        return response
 
 
 class AppList(generics.ListAPIView):
@@ -56,8 +71,10 @@ class AppDetail(APIView):
     '''
 
     def post(self, request, app_name):
+        domain = get_current_site(request)
+        user=request.user.username
         result = tasks.call_tsampi_chain.delay(
-            settings.TSAMPI_CHAIN, app_name, json.dumps(request.data), commit=True, push=True)
+            settings.TSAMPI_CHAIN, app_name, json.dumps(request.data), commit=True, push=True, user=user, email="%s@%s" % (user, domain))
         response = redirect('task-detail', result.task_id)
         response.status_code = 303
         return response
@@ -74,4 +91,5 @@ class TaskDetail(APIView):
     def get(self, request, task_id):
         # TODO: delete task after sucessfully returned
         r = AsyncResult(task_id)
-        return Response(serializers.TaskSerializer(r, context={'request': request}).data)
+        data = serializers.TaskSerializer(r, context={'request': request}).data
+        return Response(data)

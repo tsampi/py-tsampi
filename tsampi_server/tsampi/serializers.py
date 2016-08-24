@@ -3,6 +3,11 @@ from rest_framework.reverse import reverse
 import json
 
 
+class GitUrlSerializer(serializers.Serializer):
+    git_url = serializers.URLField()
+
+
+
 class AppSerializer(serializers.Serializer):
 
     url = serializers.HyperlinkedIdentityField(
@@ -22,6 +27,6 @@ class TaskSerializer(serializers.Serializer):
             j = json.loads(obj.result)
         except Exception as e:
             print(e)
-            j = obj.result
+            j = str(obj.result)
 
         return j

@@ -11,7 +11,18 @@ show_help() {
     echo """
     Commands
     manage        : Invoke django manage.py commands
+    wsgi          : Run uwsgi
+    setupdb  : Create empty database for tsampi
     """
+}
+
+setup_db() {
+    set +e
+    cd /code/tsampi_server/
+    /var/env/bin/python manage.py sqlcreate | mysql -U $DATABASE_USER -h db
+    set -e
+    /var/env/bin/python manage.py migrate
+    /var/env/bin/python manage.py createcachetable
 }
 
 case "$1" in
@@ -27,6 +38,9 @@ case "$1" in
     ;;
     uwsgi )
          /var/env/bin/uwsgi "${@:2}"
+    ;;
+    setupdb )
+        setup_db
     ;;
     *)
         show_help

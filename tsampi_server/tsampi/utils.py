@@ -173,15 +173,15 @@ def merge_from_peer(repo_uri, peer_uri, push=False):
                 return False
         except Exception as e:
             logger.error(
-                'Validation Exception on remote:{}\n{}'.format(remote, e))
+                'Validation Exception on remote:{}\n{}'.format(peer_uri, e))
             return False
         if push:
-            logger.log('Attempting to push')
+            logger.info('Attempting to push')
             push_repo(repo.working_tree_dir, attempts=10)
         return True
 
 
-def call_tsampi_chain(repo_uri, app=None, jsonrpc=None, commit=False, push=False):
+def call_tsampi_chain(repo_uri, app=None, jsonrpc=None, commit=False, push=False, user='user', email='user@localhost'):
     with tempfile.TemporaryDirectory() as tmp_path:
         logger.info('tmp git repo: %s', tmp_path)
         cloned_repo = Repo.clone_from(repo_uri, tmp_path)
@@ -190,7 +190,7 @@ def call_tsampi_chain(repo_uri, app=None, jsonrpc=None, commit=False, push=False
         errors = {}
         # There should be something to commit
         if commit and diff:
-            success, errors = make_commit(cloned_repo.working_tree_dir)
+            success, errors = make_commit(cloned_repo.working_tree_dir, user=user, email=email)
             if push and success:
                 try:
                     #import IPython; IPython.embed()
@@ -242,12 +242,12 @@ def tsampi_chain(repo_path, app=None, jsonrpc=None):
     return json.loads(out), diff
 
 
-def make_commit(repo_path, key=None):
+def make_commit(repo_path, key=None, user='user', email='user@localhost'):
     repo = Repo(repo_path)
     # if not key:
     #    key = assert_keys()
-    repo.config_writer().set_value(section='user', option='name', value='foo').set_value(
-        section='user', option='email', value='foo@bar.com').release()
+    repo.config_writer().set_value(section='user', option='name', value=user).set_value(
+        section='user', option='email', value=email).release()
 
     if key:
         repo.config_writer().set_value(
