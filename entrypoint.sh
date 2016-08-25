@@ -5,6 +5,9 @@ set -e
 # Commands to make kubernetes happy because you cannot set permission bits in the config and readonly means known_hosts cannot be updated
 chmod 400 ~/.ssh/id_rsa || echo "Cannot set permsissions on id_rsa for some reason"
 
+# load gpg private keys if available
+gpg --import /root/gpg_keys/*.key || echo "No gpg keys imported"
+
 
 # Define help message
 show_help() {

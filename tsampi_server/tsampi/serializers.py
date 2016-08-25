@@ -24,7 +24,8 @@ class TaskSerializer(serializers.Serializer):
 
     def get_result(self, obj):
         try:
-            j = json.loads(obj.result)
+            json.dumps(obj.result)  # Precheck that the result is json serializable
+            j = obj.result
         except Exception as e:
             print(e)
             j = str(obj.result)

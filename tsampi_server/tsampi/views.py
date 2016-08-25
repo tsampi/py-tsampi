@@ -28,7 +28,10 @@ def index_view(request):
     | \__ \ (_| | | | | | | |_) | |
     |_|___/\__,_|_| |_| |_| .__/|_|
                           | |
-                          |_|       </pre>'''
+                          |_|
+
+commit: {commit}
+version: {api}</pre>'''.format(**settings.TSAMPI_VERSION)
     return HttpResponse(html)
 
 class PullView(APIView):

@@ -190,7 +190,8 @@ def call_tsampi_chain(repo_uri, app=None, jsonrpc=None, commit=False, push=False
         errors = {}
         # There should be something to commit
         if commit and diff:
-            success, errors = make_commit(cloned_repo.working_tree_dir, user=user, email=email)
+            key = settings.TSAMPI_GPG_FINGERPRINT
+            success, errors = make_commit(cloned_repo.working_tree_dir, key=key, user=user, email=email)
             if push and success:
                 try:
                     #import IPython; IPython.embed()
@@ -202,8 +203,6 @@ def call_tsampi_chain(repo_uri, app=None, jsonrpc=None, commit=False, push=False
                         'master:' + new_branch)
                     raise Exception(
                         'Original exception: %s\nChanges pushed to branch: %s' % (e, new_branch))
-            if not success:
-                return rpc_out, diff, errors
 
         return {'rpc_response': rpc_out, 'diff': diff, 'tsampi_errors': errors}
 
@@ -265,6 +264,7 @@ def make_commit(repo_path, key=None, user='user', email='user@localhost'):
         except GitCommandError as e:
             logger.info(e)
             return False, {'git': str(e)}
+        #import IPython; IPython.embed()
 
         sha = repo.head.commit.hexsha
         logger.info("sha: %s, %s", sha, i)

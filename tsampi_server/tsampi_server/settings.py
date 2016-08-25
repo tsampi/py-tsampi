@@ -147,10 +147,15 @@ TSAMPI_SANDBOX_EXEC = '/code/tsampi-sandbox'
 #TSAMPI_HOME = os.path.expanduser('/code/repos/tsampi-0')
 
 # Set to repo you control to have write access
+
 TSAMPI_CHAIN = os.environ.get(
     'TSAMPI_CHAIN', 'https://github.com/tsampi/tsampi-0.git')
 TSAMPI_TIMEOUT = 30
 TSAMPI_PEER_REPOS = ['https://github.com/readevalprint/tsampi-0.git']
+
+# Keys are loded at the top of entrypoint.sh
+# TODO: Maybe it should be on demand on every request?
+TSAMPI_GPG_FINGERPRINT = os.environ.get('TSAMPI_GPG_FINGERPRINT', None)
 
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
@@ -161,6 +166,12 @@ REST_FRAMEWORK = {
         'rest_framework.permissions.IsAuthenticated',
     )
 }
+
+import git
+TSAMPI_VERSION = {
+        'commit': git.Repo(here('../..')).head.commit.hexsha,
+        'api': '0.1.1'
+        }
 
 BROKER_URL = 'django://'
 CELERY_ACCEPT_CONTENT = ['json']
