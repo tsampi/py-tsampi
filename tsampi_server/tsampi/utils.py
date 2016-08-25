@@ -2,6 +2,7 @@
 
 from git import Repo, GitCommandError
 import uuid
+import random
 import glob
 import subprocess
 import gnupg
@@ -11,6 +12,8 @@ import json
 import cgitb
 import tempfile
 from django.conf import settings
+from django.core.cache import cache
+
 cgitb.enable(format='text', context=10)
 
 
@@ -30,6 +33,13 @@ logger = logging.getLogger(__name__)
 # repo.git.config('gpg.program', here('./gpg-with-fingerprint'))
 # gpg = gnupg.GPG(homedir=here('keys'))
 
+
+def randomly(seq):
+    shuffled = list(seq)
+    random.shuffle(shuffled)
+    return iter(shuffled)
+
+
 def validate(repo_path, branch='master'):
     repo = Repo(repo_path)
 
@@ -38,7 +48,11 @@ def validate(repo_path, branch='master'):
     if len(root_commits) > 1:
         raise Exception('Too many root commits: %s.' % root_commits)
 
-    for commit in repo.iter_commits(branch):
+    # Why randomly? Arguable this is premature optimization.
+    # But if we consistantly iterate over commits in order, they will also expire in order.
+    # suffling them will allow other workers to validate_commit before (or after)
+    # the cache has expired.
+    for commit in randomly(repo.iter_commits(branch)):
         errors = validate_commit(repo_path, commit)
         valid = errors == {}
         if not valid:
@@ -63,13 +77,21 @@ def refresh_gpg_keys(repo_path):
 
 
 def validate_commit(repo_path, commit):
+
     repo = Repo(repo_path)
     repo.git.config('gpg.program', '../../gpg-with-fingerprint')
-    refresh_gpg_keys(repo_path)
     # print(repo.git.show(commit.hexsha))
 
     if isinstance(commit, str):
         commit = repo.commit(commit)
+
+    cached_validation = cache.get(commit.hexsha)
+    logger.info('cached_validation: %s', cached_validation)
+    if cached_validation is not None:  # Could be an empty dict, should clean that up
+        return cached_validation
+
+    # Load keys from repo
+    refresh_gpg_keys(repo_path)
 
     # is it a valid signiture
     try:
@@ -103,12 +125,14 @@ def validate_commit(repo_path, commit):
         out = json.loads(raw_out)
         # no news is good news
         if out:
-            logger.info('Invalid Commit: %s', commit)
+            logger.info('Invalid Commit: %s\t parent: %s', commit, p)
             logger.info(out)
             return out
 
     logger.info('Valid Commit!, %s', commit)
-    return {}
+    return_value = {}  # TODO: make this somethign useful
+    cache.set(commit.hexsha, return_value)
+    return return_value
 
 
 def generate_key():
@@ -172,7 +196,7 @@ def merge_from_peer(repo_uri, peer_uri, push=False):
                     'Invalid commit error on remote:{} \n{}'.format(remote, validation_results))
                 return False
         except Exception as e:
-            logger.error(
+            logger.exception(
                 'Validation Exception on remote:{}\n{}'.format(peer_uri, e))
             return False
         if push:

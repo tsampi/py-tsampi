@@ -183,7 +183,7 @@ CACHEBACK_TASK_QUEUE = 'celery'
 CACHES = {
     'default': {
         'BACKEND': 'django.core.cache.backends.db.DatabaseCache',
-        'TIMEOUT': 1,
+        'TIMEOUT': 5*60,
         'LOCATION': 'cache_table',
 
     }
