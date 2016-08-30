@@ -79,8 +79,9 @@ def refresh_gpg_keys(repo_path):
 def validate_commit(repo_path, commit):
 
     repo = Repo(repo_path)
-    repo.git.config('gpg.program', '../../gpg-with-fingerprint')
     # print(repo.git.show(commit.hexsha))
+
+    repo.git.config('--global', 'gpg.program', here('../../gpg-with-fingerprint'))
 
     if isinstance(commit, str):
         commit = repo.commit(commit)
@@ -267,6 +268,7 @@ def tsampi_chain(repo_path, app=None, jsonrpc=None):
 
 def make_commit(repo_path, key=None, user='user', email='user@localhost'):
     repo = Repo(repo_path)
+    repo.git.config('--global', 'gpg.program', here('../../gpg-with-fingerprint'))
     # if not key:
     #    key = assert_keys()
     repo.config_writer().set_value(section='user', option='name', value=user).set_value(
