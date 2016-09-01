@@ -41,7 +41,7 @@ class PullView(APIView):
         return Response('submit a git url')
 
     def post(self, request):
-        result = tasks.merge_from_peer.delay(settings.TSAMPI_CHAIN, request.data['git_url'], push=True)
+        result = tasks.merge_from_peer.delay(settings.TSAMPI_CHAIN, request.data['git_url'], push=True, key=settings.TSAMPI_GPG_FINGERPRINT)
         response = redirect('task-detail', result.task_id)
         response.status_code = 303
         return response

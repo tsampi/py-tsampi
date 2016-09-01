@@ -106,7 +106,7 @@ def validate_commit(repo_path, commit):
         logger.info(p.hexsha)
         repo.git.checkout(p.hexsha)
         validate_input = repo.git.show(
-            commit.hexsha, c=True, show_signature=True)
+            commit.hexsha, c=True, show_signature=True, no_abbrev=True)
         process = subprocess.Popen(['pypy-sandbox',
                                     '--tmp',
                                     repo.working_tree_dir,
@@ -181,20 +181,29 @@ def zeros(repo_path):
     return leading_zeros
 
 
-def merge_from_peer(repo_uri, peer_uri, push=False):
+def merge_from_peer(repo_uri, peer_uri, push=False, key=None, user='user', email='user@localhost'):
     with tempfile.TemporaryDirectory() as tmp_path:
         logger.info('tmp git merge repo: %s', tmp_path)
         repo = Repo.clone_from(repo_uri, tmp_path)
         repo.config_writer().set_value(section='user', option='name', value='foo').set_value(
             section='user', option='email', value='foo@bar.com').release()
 
-        repo.git.pull(peer_uri, '--no-edit')
+        sign = None
+        if key:
+            repo.config_writer().set_value(
+                section='user', option='signingkey', value=key).release()
+            sign = '-S'
+
+        # In the event of a merge conflict, our branch is to pre brefered over theirs.
+        # This is arguably betteer, but will work for now.
+        repo.git.pull(peer_uri, '--no-edit', sign, '-X', 'ours')
+
         print(repo.git.log('--graph'))
         try:
             validation_results = list(validate(repo.working_tree_dir))
             if not all(v for v, c in validation_results):
                 logger.debug(
-                    'Invalid commit error on remote:{} \n{}'.format(remote, validation_results))
+                    'Invalid commit error on remote:{} \n{}'.format(peer_uri, validation_results))
                 return False
         except Exception as e:
             logger.exception(
