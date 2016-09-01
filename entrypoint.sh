@@ -26,6 +26,14 @@ setup_db() {
     /var/env/bin/python manage.py createcachetable
 }
 
+dev_server() {
+    . /var/env/bin/activate
+    cd /code/tsampi_server/
+    trap 'kill %1; kill %2' SIGINT
+    python manage.py celery worker -l INFO 2>&1 | sed -e 's/^/[celery] /' & python manage.py runserver 0:8080 2>&1 | sed -e 's/^/[django] /'
+
+}
+
 case "$1" in
     manage )
         cd /code/tsampi_server/
@@ -42,6 +50,9 @@ case "$1" in
     ;;
     setupdb )
         setup_db
+    ;;
+    devserver )
+        dev_server
     ;;
     *)
         show_help

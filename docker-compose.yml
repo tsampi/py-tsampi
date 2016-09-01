@@ -13,13 +13,14 @@ server:
     DATABASE_USER: root
     DATABASE_PASSWORD: pass
     DATABASE_NAME: tsampi
+    C_FORCE_ROOT: 1
 
   build: .
   volumes:
     - .:/code/
     - ./docker_home:/root/
   hostname: tsampi
-  command: manage runserver 0.0.0.0:8080
+  command: devserver
   ports:
     - "8080:8080"
   links:
