@@ -21,10 +21,7 @@ show_help() {
 }
 
 setup_db() {
-    set +e
     cd /code/tsampi_server/
-    /var/env/bin/python manage.py sqlcreate | mysql -U $DATABASE_USER -h db
-    set -e
     /var/env/bin/python manage.py migrate
     /var/env/bin/python manage.py createcachetable
 }
