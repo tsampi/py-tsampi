@@ -157,8 +157,9 @@ class PyPySandboxedProc(VirtualizedSandboxedProc, SimpleIOSandboxedProc):
 
 
     def do_ll_os__ll_os_read(self, fd, size):
-        #if fd in self.sockets:
-        #   return self.get_file(fd).recv(size)
+        if fd in self.sockets:
+           return self.get_file(fd).recv(size)
+
         f = self.get_file(fd, throw=False)
         if f is None:
             return super(VirtualizedSandboxedProc, self).do_ll_os__ll_os_read(
@@ -170,8 +171,8 @@ class PyPySandboxedProc(VirtualizedSandboxedProc, SimpleIOSandboxedProc):
             return f.read(min(size, 256 * 1024))
 
     def do_ll_os__ll_os_write(self, fd, data):
-        #if fd in self.sockets:
-        #    return self.get_file(fd).send(data)
+        if fd in self.sockets:
+            return self.get_file(fd).send(data)
 
         if fd in [1, 2]:
             return super(VirtualizedSandboxedProc, self).do_ll_os__ll_os_write(
@@ -194,24 +195,25 @@ class PyPySandboxedProc(VirtualizedSandboxedProc, SimpleIOSandboxedProc):
     do_ll_os__ll_os_fstat.resulttype = RESULTTYPE_STATRESULT
 
     def do_ll_os__ll_os_open(self, vpathname, flags, mode):
-        if vpathname.startswith("tcp://"):
-            host, port = vpathname[6:].split(":")
-            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            sock.connect((host, int(port)))
-            sock.setblocking(0)
-            fd = self.allocate_fd(sock)
-            self.sockets[fd] = vpathname
-            return fd
 
-        if vpathname.startswith("http://"):
-            #host, port = vpathname[6:].split(":")
-            u = urllib.urlopen(vpathname)
-            sock = u.fp
-            #sock.connect((host, int(port)))
-            #sock.setblocking(0)
-            fd = self.allocate_fd(sock)
-            self.sockets[fd] = True
-            return fd
+        ##
+        # No, child. You are not yet ready.
+        ##
+        #if vpathname.startswith("tcp://"):
+        #    host, port = vpathname[6:].split(":")
+        #    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        #    sock.connect((host, int(port)))
+        #    sock.setblocking(0)
+        #    fd = self.allocate_fd(sock)
+        #    self.sockets[fd] = vpathname
+        #    return fd
+        #
+        #if vpathname.startswith("http://"):
+        #    u = urllib.urlopen(vpathname)
+        #    sock = u.fp
+        #    fd = self.allocate_fd(sock)
+        #    self.sockets[fd] = True
+        #    return fd
 
         # Normalize the pathname within the sandbox fs
         # print('os_open', vpathname, flags, mode, self.tmpdir)
@@ -283,6 +285,7 @@ def main():
     timeout = None
     logfile = None
     debug = False
+    lib_root=None
     extraoptions = []
 
     def help():
