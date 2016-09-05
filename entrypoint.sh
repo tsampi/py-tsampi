@@ -30,7 +30,7 @@ dev_server() {
     . /var/env/bin/activate
     cd /code/tsampi_server/
     trap 'kill %1; kill %2' SIGINT
-    python manage.py celery worker -l INFO 2>&1 | sed -e 's/^/[celery] /' & python manage.py runserver 0:8080 2>&1 | sed -e 's/^/[django] /'
+    python manage.py celery worker -l INFO 2>&1 | sed -e 's/^/[celery] /' & python manage.py runserver 0:8080 2>&1
 
 }
 
