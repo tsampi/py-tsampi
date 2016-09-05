@@ -7,7 +7,7 @@ chmod 400 ~/.ssh/id_rsa || echo "Cannot set permsissions on id_rsa for some reas
 chmod 600 ~/.gnupg/gpg.conf &&  chmod 700 ~/.gnupg || echo "cannot set permissions on gnupg dir"
 
 # load gpg private keys if available
-gpg --import /gpg_keys/*.key || echo "No gpg keys imported"
+gpg --import ~/gpg_keys/*.key || echo "No gpg keys imported"
 
 
 # Define help message
@@ -27,11 +27,18 @@ setup_db() {
 }
 
 dev_server() {
-    . /var/env/bin/activate
+    # This runs the django runserver and celery worker at the sme time.
+    # Not for production use obviously.
+    set +e
     cd /code/tsampi_server/
     trap 'kill %1; kill %2' SIGINT
-    python manage.py celery worker -l INFO 2>&1 | sed -e 's/^/[celery] /' & python manage.py runserver 0:8080 2>&1 | sed -e 's/^/[django] /'
+    /var/env/bin/python manage.py celery worker -l INFO  2> >(sed -e 's/^/[celery] /')  & /var/env/bin/python manage.py runserver 0.0.0.0:8080  2> >(sed -e 's/^/[django] /')
+    set -e
+}
 
+gen_secrets() {
+    # create a gpg key
+    gnupg --list-keys
 }
 
 case "$1" in
