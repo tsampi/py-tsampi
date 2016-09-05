@@ -36,11 +36,6 @@ dev_server() {
     set -e
 }
 
-gen_secrets() {
-    # create a gpg key
-    gnupg --list-keys
-}
-
 case "$1" in
     manage )
         cd /code/tsampi_server/
