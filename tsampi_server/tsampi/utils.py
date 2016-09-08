@@ -216,29 +216,34 @@ def merge_from_peer(repo_uri, peer_uri, push=False, key=None, user='user', email
 
 
 def call_tsampi_chain(repo_uri, app=None, jsonrpc=None, commit=False, push=False, user='user', email='user@localhost'):
-    with tempfile.TemporaryDirectory() as tmp_path:
-        logger.info('tmp git repo: %s', tmp_path)
-        cloned_repo = Repo.clone_from(repo_uri, tmp_path)
-        rpc_out, diff = tsampi_chain(
-            cloned_repo.working_tree_dir, app, jsonrpc)
-        errors = {}
-        # There should be something to commit
-        if commit and diff:
-            key = settings.TSAMPI_GPG_FINGERPRINT
-            success, errors = make_commit(cloned_repo.working_tree_dir, key=key, user=user, email=email)
-            if push and success:
-                try:
-                    #import IPython; IPython.embed()
-                    push_repo(cloned_repo.working_tree_dir, attempts=10)
-                except Exception as e:
-                    # push this to a branch and raise
-                    new_branch = 'failed-%s' % uuid.uuid4()
-                    push_info = cloned_repo.remotes.origin.push(
-                        'master:' + new_branch)
-                    raise Exception(
-                        'Original exception: %s\nChanges pushed to branch: %s' % (e, new_branch))
+    errors = {}
+    rpc_out = ''
+    diff = ''
+    try:
+        with tempfile.TemporaryDirectory() as tmp_path:
+            logger.info('tmp git repo: %s', tmp_path)
+            cloned_repo = Repo.clone_from(repo_uri, tmp_path)
+            rpc_out, diff = tsampi_chain(
+                cloned_repo.working_tree_dir, app, jsonrpc)
+            # There should be something to commit
+            if commit and diff:
+                key = settings.TSAMPI_GPG_FINGERPRINT
+                success, errors = make_commit(cloned_repo.working_tree_dir, key=key, user=user, email=email)
+                if push and success:
+                    try:
+                        #import IPython; IPython.embed()
+                        push_repo(cloned_repo.working_tree_dir, attempts=10)
+                    except (Exception, GitCommandError) as e:
+                        # push this to a branch and raise
+                        new_branch = 'failed-%s' % uuid.uuid4()
+                        push_info = cloned_repo.remotes.origin.push(
+                            'master:' + new_branch)
+                        errors = {'git': 'Failed pushhing'}
+    except (Exception, GitCommandError) as e:
+        errors['git'] = e
+        logging.exception('Could not call tsampi chain')
 
-        return {'rpc_response': rpc_out, 'diff': diff, 'tsampi_errors': errors}
+    return {'rpc_response': rpc_out, 'diff': diff, 'tsampi_errors': errors}
 
 
 def tsampi_chain(repo_path, app=None, jsonrpc=None):
