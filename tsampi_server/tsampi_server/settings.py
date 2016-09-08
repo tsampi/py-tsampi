@@ -169,9 +169,9 @@ REST_FRAMEWORK = {
 
 import git
 TSAMPI_VERSION = {
-        'commit': git.Repo(here('../..')).head.commit.hexsha,
-        'api': '0.1.1'
-        }
+    'commit': git.Repo(here('../..')).head.commit.hexsha,
+    'api': '0.1.1'
+}
 
 BROKER_URL = 'django://'
 CELERY_ACCEPT_CONTENT = ['json']
@@ -183,9 +183,8 @@ CACHEBACK_TASK_QUEUE = 'celery'
 CACHES = {
     'default': {
         'BACKEND': 'django.core.cache.backends.db.DatabaseCache',
-        'TIMEOUT': 5*60,
+        'TIMEOUT': os.getenv('CACHE_TIMEOUT', 5*60),
         'LOCATION': 'cache_table',
-
     }
 }
 

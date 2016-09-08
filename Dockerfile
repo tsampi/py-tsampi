@@ -33,7 +33,7 @@ python-virtualenv \
 python-pypy.sandbox \
 rlwrap
 
-
+RUN ssh-keyscan -t rsa,dsa github.com bitbucket.org gitlab.com >> ~/.ssh/known_hosts
 RUN virtualenv -p python3 /var/env/
 RUN /var/env/bin/pip install wheel --upgrade
 
