@@ -40,9 +40,9 @@ Set up the database and admin user and run the tsampi web server.
 
     $ docker-compose run server setupdb
     $ docker-compose run server manage createsuperuser  
-    $ TSAMPI_GPG_FINGERPRINT="41BE 4B2B C511 6A07 16E2  960F B27D 57E8 C576 112D"   # from above ^^ 
-    $ TSAMPI_CHAIN="git@github.com:username/tsampi-0.git"   # Change this to your public tsampi chain from above
-    $ docker-compose run --service-ports -e TSAMPI_GPG_FINGERPRINT -e TSAMPI_CHAIN server  # binds on 0.0.0.0:8080
+    $ export TSAMPI_GPG_FINGERPRINT="41BE 4B2B C511 6A07 16E2  960F B27D 57E8 C576 112D"   # from above ^^ 
+    $ export TSAMPI_CHAIN="git@github.com:username/tsampi-0.git"   # Change this to your public tsampi chain from above
+    $ docker-compose run -p 8080:8080 -e TSAMPI_GPG_FINGERPRINT -e TSAMPI_CHAIN server  # binds on 0.0.0.0:8080
 
 Go to http://YOURIP:8080 in your browser.
 
