@@ -50,4 +50,4 @@ Go to http://YOURIP:8080 in your browser.
 Help! I'm getting 
     django.db.utils.OperationalError: (2003, "Can't connect to MySQL server on 'db' (111)")
     
-Keep trying to start the server, if this is the first time tsampi-server is run, it takes a moment for MySql to start to accept conenctions. We
+Keep trying to start the server, if this is the first time tsampi-server is run, it takes a moment for MySql to start to accept conenctions.
