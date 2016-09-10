@@ -1,3 +1,6 @@
+# INSTALL 
+
+## Get the tsampi_chain
 Clone https://github.com/tsampi/tsampi-0 to a public repo you have write access to
 
 Clone this repo
@@ -14,6 +17,7 @@ See [https://git-scm.com/book/en/v2/Git-on-the-Server-Generating-Your-SSH-Public
     root@tsampi:/code# rm -rf test-chain
     root@tsampi:/code# exit  # leave the container
     
+## Make and export your GPG key
 From within the container generate a gpg key and export it in ascii armor it to `~/gpg_keys/pub.key` (which is mounted from  `docker_home` created above). See [http://irtfweb.ifa.hawaii.edu/~lockhart/gpg/gpg-cs.html](http://irtfweb.ifa.hawaii.edu/~lockhart/gpg/gpg-cs.html)
     
     $ docker-compose run server bash
@@ -31,6 +35,7 @@ From within the container generate a gpg key and export it in ascii armor it to 
     root@tsampi:/code# gpg --export-secret-key  > ~/gpg_keys/private.key
     root@tsampi:/code# exit
     
+## Setup admin and run development server
 Set up the database and admin user and run the tsampi web server.
 
     $ docker-compose run server setupdb
@@ -40,3 +45,9 @@ Set up the database and admin user and run the tsampi web server.
     $ docker-compose run --service-ports -e TSAMPI_GPG_FINGERPRINT -e TSAMPI_CHAIN server  # binds on 0.0.0.0:8080
 
 Go to http://YOURIP:8080 in your browser.
+
+# Trouble shooting
+Help! I'm getting 
+    django.db.utils.OperationalError: (2003, "Can't connect to MySQL server on 'db' (111)")
+    
+Keep trying to start the server, if this is the first time tsampi-server is run, it takes a moment for MySql to start to accept conenctions. We
