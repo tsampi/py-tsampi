@@ -84,3 +84,7 @@ Check out your `TSAMPI_CHAIN` to the home directory from within the container
     >>>> import tsampi
     >>>> print "hi"
     hi
+    >>>> import glob
+    >>>> glob.glob('*')   # you are in /tmp with the TSAMPI_REPO mounted as a virtual dir
+    ['apps', 'data', 'tsampi', 'keys', 'merge_diff', 'Makefile']
+    >>>> 
