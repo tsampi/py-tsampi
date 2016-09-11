@@ -48,8 +48,12 @@ Set up the database and admin user and run the tsampi web server.
 
 Go to http://YOURIP:8080 in your browser.
 
-# Trouble shooting
-Help! I'm getting 
-    django.db.utils.OperationalError: (2003, "Can't connect to MySQL server on 'db' (111)")
+# Troubleshooting
+> Help! I'm getting 
+> `django.db.utils.OperationalError: (2003, "Can't connect to MySQL server on 'db' (111)")`
     
 Keep trying to start the server, if this is the first time tsampi-server is run, it takes a moment for MySql to start to accept conenctions.
+
+> No apps are listed, it's just an empty list `[]`.
+
+Check the output for something like `fatal: Could not read from remote repository.` This means that that either you need a to add ssh access to tsampi for this repo or maybe there is a typo in the url. There could be a lot of reasons, too many to mention here. Generally `docker-compose run server bash -c "git clone $TSAMPI_CHAIN /tmp/tmp-chain"` is a good test to show you have at least read access to your `TSAMPI_CHAIN`.
