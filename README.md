@@ -57,3 +57,30 @@ Keep trying to start the server, if this is the first time tsampi-server is run,
 > No apps are listed, it's just an empty list `[]`.
 
 Check the output for something like `fatal: Could not read from remote repository.` This means that that either you need a to add ssh access to tsampi for this repo or maybe there is a typo in the url. There could be a lot of reasons, too many to mention here. Generally `docker-compose run server bash -c "git clone $TSAMPI_CHAIN /tmp/tmp-chain"` is a good test to show you have at least read access to your `TSAMPI_CHAIN`.
+
+# How do I develop apps or play with the sandbox?
+
+Check out your `TSAMPI_CHAIN` to the home directory from within the container
+    
+    $ docker-compose run server bash -c "git clone $TSAMPI_CHAIN"
+    $ docker-compose run server sandbox --lib_root=./tsampi-0/tsampi/pypy --tmp=./tsampi-0/
+    + chmod 600 /root/.gnupg/gpg.conf
+    + chmod 700 /root/.gnupg
+    + gpg --import /root/gpg_keys/private.key /root/gpg_keys/priv.key
+    gpg: key BA046CB8: already in secret keyring
+    gpg: key C7CBA01F: already in secret keyring
+    gpg: Total number processed: 2
+    gpg:       secret keys read: 2
+    gpg:  secret keys unchanged: 2
+    + echo 'No gpg keys imported'
+    No gpg keys imported
+    + case "$1" in
+    + rlwrap /code/tsampi-sandbox --lib_root=./tsampi-0/tsampi/pypy --tmp=./tsampi-0/
+    'import site' failed
+    Python 2.7.3 (2.2.1+dfsg-1ubuntu0.3, Sep 30 2015, 17:43:43)
+    [PyPy 2.2.1 with GCC 4.8.4] on linux2
+    Type "help", "copyright", "credits" or "license" for more information.
+    And now for something completely differ
+    >>>> import tsampi
+    >>>> print "hi"
+    hi
