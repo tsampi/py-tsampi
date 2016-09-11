@@ -1,31 +1,35 @@
-db:
-  image: "mysql:5.7"
-  environment:
-    MYSQL_USER: root
-    MYSQL_ROOT_PASSWORD: pass
-    MYSQL_DATABASE: tsampi
-  expose:
-    - "3306"
+version: '2'
+services:
+    db:
+      image: "mysql:5.7"
+      environment:
+        MYSQL_USER: root
+        MYSQL_ROOT_PASSWORD: pass
+        MYSQL_DATABASE: tsampi
+      expose:
+        - "3306"
 
 
-server:
-  environment:
-    DATABASE_USER: root
-    DATABASE_PASSWORD: pass
-    DATABASE_NAME: tsampi
-    C_FORCE_ROOT: 1
+    server:
+      environment:
+       - DATABASE_USER=root
+       - DATABASE_PASSWORD=pass
+       - DATABASE_NAME=tsampi
+       - C_FORCE_ROOT=1
+       - TSAMPI_GPG_FINGERPRINT
+       - TSAMPI_CHAIN
 
-  build: .
-  volumes:
-    - .:/code/
-    - ./docker_home:/root/
-  hostname: tsampi
-  command: devserver
-  ports:
-    - "8080:8080"
-  links:
-    - db
-  entrypoint:
-    - bash
-    - /code/entrypoint.sh
+      build: .
+      volumes:
+        - .:/code/
+        - ./docker_home:/root/
+      hostname: tsampi
+      command: devserver
+      ports:
+        - "8080:8080"
+      links:
+        - db
+      entrypoint:
+        - bash
+        - /code/entrypoint.sh
 

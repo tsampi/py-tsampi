@@ -1,11 +1,11 @@
 #!/bin/bash
 set -e
-
+set -x
 
 ###### These should be in an init function
 
 # Commands to make kubernetes happy because you cannot set permission bits in the config and readonly means known_hosts cannot be updated
-chmod 400 ~/.ssh/id_rsa || echo "Cannot set permsissions on id_rsa for some reason"
+chmod 600  ~/.ssh/id_rsa || echo "Cannot set permsissions on id_rsa for some reason"
 chmod 600 ~/.gnupg/gpg.conf &&  chmod 700 ~/.gnupg || echo "cannot set permissions on gnupg dir"
 
 # load gpg private keys if available
