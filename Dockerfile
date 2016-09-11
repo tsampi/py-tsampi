@@ -42,6 +42,7 @@ ADD ./requirements.txt /code/requirements.txt
 RUN /var/env/bin/pip install -r /code/requirements.txt
 
 ADD . /code
-RUN   /code/entrypoint.sh manage collectstatic --noinput
+RUN  /code/entrypoint.sh manage collectstatic --noinput
+RUN ssh-keyscan -t rsa,dsa github.com bitbucket.org gitlab.com
 
 ENTRYPOINT  /code/entrypoint.sh manage runserver 0.0.0.0:8080
