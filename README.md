@@ -7,7 +7,7 @@ Clone this repo
 
     $ git clone git@github.com:tsampi/py-tsampi.git 
     $ cd py-tsampi
-    $ mkdir docker_home   # where ssh and gpg keys are stored.
+    $ mkdir -p docker_home   # where ssh and gpg keys are stored.
     
 Make sure the container can access your forked tsampi-chain (tsampi-0) from above. 
 See [https://git-scm.com/book/en/v2/Git-on-the-Server-Generating-Your-SSH-Public-Key](https://git-scm.com/book/en/v2/Git-on-the-Server-Generating-Your-SSH-Public-Key)
@@ -18,7 +18,8 @@ See [https://git-scm.com/book/en/v2/Git-on-the-Server-Generating-Your-SSH-Public
     root@tsampi:/code# exit  # leave the container
     
 ## Make and export your GPG key
-From within the container generate a gpg key and export it in ascii armor it to `~/gpg_keys/pub.key` (which is mounted from  `docker_home` created above). See [http://irtfweb.ifa.hawaii.edu/~lockhart/gpg/gpg-cs.html](http://irtfweb.ifa.hawaii.edu/~lockhart/gpg/gpg-cs.html)
+From within the container generate a gpg key and export it in ascii armor it to `/root/gpg_keys/pub.key` (which is mounted from  `docker_home` created above). IMPORTANT: you should back up your private key somewhere.
+See [http://irtfweb.ifa.hawaii.edu/~lockhart/gpg/gpg-cs.html](http://irtfweb.ifa.hawaii.edu/~lockhart/gpg/gpg-cs.html)
     
     $ docker-compose run server bash
     root@tsampi:/code# gpg --gen-key  # select defaults
@@ -32,6 +33,7 @@ From within the container generate a gpg key and export it in ascii armor it to 
     ssb   2048R/B48AD64C 2016-09-10
 
     
+    root@tsampi:/code# mkdir -p ~/gpg_keys/
     root@tsampi:/code# gpg --export-secret-key  > ~/gpg_keys/private.key
     root@tsampi:/code# exit
     
