@@ -222,7 +222,7 @@ def call_tsampi_chain(repo_uri, app=None, jsonrpc=None, commit=False, push=False
     try:
         with tempfile.TemporaryDirectory() as tmp_path:
             logger.info('tmp git repo: %s', tmp_path)
-            cloned_repo = Repo.clone_from(repo_uri, tmp_path)
+            cloned_repo = Repo.clone_from(repo_uri, tmp_path, depth=2)
             rpc_out, diff = tsampi_chain(
                 cloned_repo.working_tree_dir, app, jsonrpc)
             # There should be something to commit
