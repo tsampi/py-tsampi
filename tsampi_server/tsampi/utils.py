@@ -254,7 +254,7 @@ def tsampi_chain(repo_path, app=None, jsonrpc=None):
     if app:
         app_and_rpc.append(app)
     if jsonrpc and app:
-        app_and_rpc.extend(['--jsonrpc', jsonrpc])
+        app_and_rpc.extend(['--jsonrpc',  json.dumps(jsonrpc)])
 
     print(os.path.join(repo.working_tree_dir, './tsampi/pypy/'))
     out = subprocess.check_output([settings.TSAMPI_SANDBOX_EXEC,

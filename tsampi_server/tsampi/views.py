@@ -77,7 +77,7 @@ class AppDetail(APIView):
         domain = get_current_site(request)
         user=request.user.username
         result = tasks.call_tsampi_chain.delay(
-            settings.TSAMPI_CHAIN, app_name, json.dumps(request.data), commit=True, push=True, user=user, email="%s@%s" % (user, domain))
+            settings.TSAMPI_CHAIN, app_name, request.data, commit=True, push=True, user=user, email="%s@%s" % (user, domain))
         response = redirect('task-detail', result.task_id)
         response.status_code = 303
         return response
