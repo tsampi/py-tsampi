@@ -240,7 +240,7 @@ def call_tsampi_chain(repo_uri, app=None, jsonrpc=None, commit=False, push=False
                             'master:' + new_branch)
                         errors = {'git': 'Failed pushhing'}
     except (Exception, GitCommandError) as e:
-        errors['git'] = e
+        errors['git'] = str(e)
         logging.exception('Could not call tsampi chain')
 
     return {'rpc_response': rpc_out, 'diff': diff, 'tsampi_errors': errors}
