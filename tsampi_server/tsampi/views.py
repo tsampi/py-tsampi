@@ -91,8 +91,11 @@ class AppDetail(APIView):
 class TaskDetail(APIView):
     serializer_class = serializers.TaskSerializer
 
+
+
     def get(self, request, task_id):
         # TODO: delete task after sucessfully returned
         r = AsyncResult(task_id)
+        r.get()
         data = serializers.TaskSerializer(r, context={'request': request}).data
         return Response(data)
