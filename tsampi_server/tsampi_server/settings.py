@@ -48,6 +48,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'raven.contrib.django.raven_compat',
     'rest_framework',
     'django_extensions',
     'djcelery',
@@ -208,6 +209,23 @@ LOGGING = {
             'level': 'DEBUG',
         },
     },
+}
+
+NOTEBOOK_ARGUMENTS = [
+    '--ip', '0.0.0.0',
+    '--port', '8080',
+]
+
+import os
+import raven
+
+import os
+import raven
+
+RAVEN_CONFIG = {
+    'dsn': 'https://2d75880c88fa45ceaee90c3368306ba2:c720275ab98e48e7ba506e0d030e4761@sentry.io/108558',
+    # If you are using git, you can also automatically configure the
+    # release based on the git info.
 }
 
 try:

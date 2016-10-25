@@ -14,3 +14,5 @@ django-cacheback[celery]
 Werkzeug
 python-gnupg
 mysqlclient
+jupyter
+raven
