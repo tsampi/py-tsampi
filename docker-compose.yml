@@ -32,4 +32,5 @@ services:
       entrypoint:
         - bash
         - /code/entrypoint.sh
+        - devserver
 

@@ -11,9 +11,11 @@ https://docs.djangoproject.com/en/1.9/ref/settings/
 """
 
 import os
+import logging
 import djcelery
 
 djcelery.setup_loader()
+logger = logging.getLogger(__name__)
 
 
 def here(x):
@@ -23,20 +25,18 @@ def here(x):
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 
-# Quick-start development settings - unsuitable for production
-# See https://docs.djangoproject.com/en/1.9/howto/deployment/checklist/
-
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'u_8z^%l6%&(^3@e2frvurq868+#ara-cqg1via1w-80-bme16o'
+SECRET_KEY = os.environ.get('SECRET_KEY', 'w@F2@3f@bon34gBtw45htnrtwgrdcdRgqfwewfewREG$we42#$%#Revf')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = False
 
 ALLOWED_HOSTS = ['*']
 STATIC_ROOT = here('../static_root')
 STATICFILES_DIRS = [
     here('../static')
 ]
+STATIC_URL = '/static/'
 
 
 # Application definition
@@ -138,10 +138,6 @@ USE_L10N = True
 USE_TZ = True
 
 
-# Static files (CSS, JavaScript, Images)
-# https://docs.djangoproject.com/en/1.9/howto/static-files/
-
-STATIC_URL = '/static/'
 
 TSAMPI_SANDBOX_EXEC = '/code/tsampi-sandbox'
 # This is the path within the docker container
@@ -152,7 +148,7 @@ TSAMPI_SANDBOX_EXEC = '/code/tsampi-sandbox'
 TSAMPI_CHAIN = os.environ.get(
     'TSAMPI_CHAIN', 'https://github.com/tsampi/tsampi-0.git')
 TSAMPI_TIMEOUT = 30
-TSAMPI_PEER_REPOS = ['https://github.com/readevalprint/tsampi-0.git']
+#TSAMPI_PEER_REPOS = ['https://github.com/readevalprint/tsampi-0.git']
 
 # Keys are loded at the top of entrypoint.sh
 # TODO: Maybe it should be on demand on every request?
@@ -176,7 +172,7 @@ TSAMPI_VERSION = {
     'api': '0.1.1'
 }
 
-BROKER_URL = 'django://'
+BROKER_URL = 'django://'  # TODO: get from env var
 CELERY_ACCEPT_CONTENT = ['json']
 CELERY_TASK_SERIALIZER = 'json'
 CELERY_RESULT_BACKEND = 'djcelery.backends.database:DatabaseBackend'
@@ -222,13 +218,14 @@ import raven
 import os
 import raven
 
-RAVEN_CONFIG = {
-    'dsn': 'https://2d75880c88fa45ceaee90c3368306ba2:c720275ab98e48e7ba506e0d030e4761@sentry.io/108558',
-    # If you are using git, you can also automatically configure the
-    # release based on the git info.
-}
+raven_dsn = os.getenv('RAVEN_DSN')
+if raven_dsn:
+    RAVEN_CONFIG = {
+        'dsn': raven_dsn,
+        'release': git.Repo(here('../..')).head.commit.hexsha,
+    }
 
 try:
     from .local_settings import *
 except ImportError as e:
-    print(e)
+    logger.debug('Skipping local_settings: %s', e)

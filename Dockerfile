@@ -46,4 +46,4 @@ ADD . /code
 RUN  /code/entrypoint.sh manage collectstatic --noinput
 RUN ssh-keyscan -t rsa,dsa github.com bitbucket.org gitlab.com
 
-ENTRYPOINT  /code/entrypoint.sh manage runserver 0.0.0.0:8080
+ENTRYPOINT  ["bash", "/code/entrypoint.sh"]
