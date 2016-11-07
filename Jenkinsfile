@@ -1,3 +1,1 @@
-node("docker") {
-      checkout scm
-}
+checkout scm
