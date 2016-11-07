@@ -1,1 +1,3 @@
-checkout scm
+node() {
+    checkout scm
+}
