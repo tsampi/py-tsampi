@@ -8,8 +8,8 @@ django-extensions
 markdown
 ipython
 ipdb
-celery
--e git+https://github.com/iXce/django-celery.git@24016a940b8e36e9116181c429c545f25fc2d922#egg=djcelery
+celery[django]
+#-e git+https://github.com/iXce/django-celery.git@24016a940b8e36e9116181c429c545f25fc2d922#egg=djcelery
 django-cacheback[celery]
 Werkzeug
 python-gnupg

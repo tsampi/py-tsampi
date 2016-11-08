@@ -12,9 +12,6 @@ https://docs.djangoproject.com/en/1.9/ref/settings/
 
 import os
 import logging
-import djcelery
-
-djcelery.setup_loader()
 logger = logging.getLogger(__name__)
 
 
@@ -51,8 +48,8 @@ INSTALLED_APPS = [
     'raven.contrib.django.raven_compat',
     'rest_framework',
     'django_extensions',
-    'djcelery',
-    'kombu.transport.django',
+    #'djcelery',
+    #'kombu.transport.django',
     'cacheback',
     'tsampi',
 ]
