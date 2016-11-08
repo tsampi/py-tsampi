@@ -37,6 +37,7 @@ rlwrap
 
 RUN virtualenv -p python3 /var/env/
 RUN /var/env/bin/pip install wheel --upgrade
+RUN /var/env/bin/pip install psycopg2 python-gnupg jupyter
 
 WORKDIR /code/
 ADD ./requirements.txt /code/requirements.txt
