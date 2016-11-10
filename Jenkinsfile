@@ -1,9 +1,9 @@
 node() {
-    sh 'env | sort'
     stage('build') {
-        checkout scm
-        def img = docker.build('tsampi/tsampi-server', '.')
-       img.push('latest')
-
+        sh 'env | sort'
+        sh 'docker-compose build'
+    }
+    stage('test') {
+        sh 'docker-compose server manage test
     }
 }
