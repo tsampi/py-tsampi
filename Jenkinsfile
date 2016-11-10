@@ -4,6 +4,6 @@ node() {
         sh 'docker-compose build'
     }
     stage('test') {
-        sh 'docker-compose server manage test
+        sh 'docker-compose server manage test'
     }
 }
