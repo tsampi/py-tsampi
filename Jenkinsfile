@@ -1,6 +1,9 @@
 node() {
     stage('build') {
-        checkout scm
-        sh "docker-compose build"
+        sh 'env | sort'
+        sh 'docker-compose build'
+    }
+    stage('test') {
+        sh 'docker-compose run server manage test'
     }
 }
