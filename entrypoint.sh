@@ -21,6 +21,7 @@ show_help() {
     manage        : Invoke django manage.py commands
     wsgi          : Run uwsgi
     setupdb  : Create empty database for tsampi
+    freeze_dependencies     : freepe pip dependencies and write to requirements.txt
     """
 }
 
@@ -39,6 +40,15 @@ dev_server() {
     /var/env/bin/python manage.py celery worker -l INFO  2> >(sed -e 's/^/[celery] /')  & /var/env/bin/python manage.py runserver 0.0.0.0:8080  2> >(sed -e 's/^/[django] /')
     set -e
 }
+
+pip_freeze() {
+    virtualenv -p python3 /tmp/env/
+    /tmp/env/bin/pip install -r ./primary-requirements.txt --upgrade
+    set +x
+    echo -e "###\n# frozen requirements DO NOT CHANGE\n# To update this update 'primary-requirements.txt' then run ./entrypoint.sh pip_freeze\n###" | tee requirements.txt
+    /tmp/env/bin/pip freeze | tee -a requirements.txt
+}
+
 
 case "$1" in
     manage )
