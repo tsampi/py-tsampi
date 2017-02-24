@@ -18,6 +18,7 @@ services:
        - C_FORCE_ROOT=1
        - TSAMPI_GPG_FINGERPRINT
        - TSAMPI_CHAIN
+       - BROKER_URL=amqp://celery:celery@rabbitmq:5672//
 
       build: .
       volumes:
@@ -29,7 +30,30 @@ services:
         - "8080:8080"
       links:
         - db
+        - rabbitmq
       entrypoint:
         - bash
         - /code/entrypoint.sh
 
+
+    rabbitmq:
+        image: "rabbitmq:3.6"
+        environment:
+         - RABBITMQ_DEFAULT_VHOST=/
+         - RABBITMQ_DEFAULT_USER=celery
+         - RABBITMQ_DEFAULT_PASS=celery
+
+    worker:
+      environment:
+        - BROKER_URL=amqp://celery:celery@rabbitmq:5672//
+
+      build: .
+      volumes:
+        - .:/code/
+        - ./docker_home:/root/
+      hostname: tsampi-worker
+      links:
+        - db
+        - rabbitmq
+
+      command: [./entrypoint.sh, manage, celery]

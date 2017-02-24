@@ -25,8 +25,9 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = os.environ.get('SECRET_KEY', 'w@F2@3f@bon34gBtw45htnrtwgrdcdRgqfwewfewREG$we42#$%#Revf')
 
+
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = False
+DEBUG = bool(os.environ.get('DEBUG', 'False'))
 
 ALLOWED_HOSTS = ['*']
 STATIC_ROOT = here('../static_root')
@@ -48,11 +49,12 @@ INSTALLED_APPS = [
     'raven.contrib.django.raven_compat',
     'rest_framework',
     'django_extensions',
-    #'djcelery',
-    #'kombu.transport.django',
+    'django_celery_results',
     'cacheback',
     'tsampi',
 ]
+CELERY_RESULT_BACKEND = 'django-cache'
+
 
 MIDDLEWARE_CLASSES = [
     #'django.middleware.cache.UpdateCacheMiddleware',
@@ -142,8 +144,7 @@ TSAMPI_SANDBOX_EXEC = '/code/tsampi-sandbox'
 
 # Set to repo you control to have write access
 
-TSAMPI_CHAIN = os.environ.get(
-    'TSAMPI_CHAIN', 'https://github.com/tsampi/tsampi-0.git')
+TSAMPI_CHAIN = os.environ.get('TSAMPI_CHAIN', 'git@github.com:readevalprint/tsampi-0.git')
 TSAMPI_TIMEOUT = 30
 #TSAMPI_PEER_REPOS = ['https://github.com/readevalprint/tsampi-0.git']
 
@@ -169,10 +170,10 @@ TSAMPI_VERSION = {
     'api': '0.1.1'
 }
 
-BROKER_URL = 'django://'  # TODO: get from env var
+BROKER_URL = os.environ.get('BROKER_URL')# TODO: get from env var
 CELERY_ACCEPT_CONTENT = ['json']
 CELERY_TASK_SERIALIZER = 'json'
-CELERY_RESULT_BACKEND = 'djcelery.backends.database:DatabaseBackend'
+CELERY_RESULT_BACKEND = 'django-cache'
 
 CACHEBACK_TASK_QUEUE = 'celery'
 
@@ -186,7 +187,7 @@ CACHES = {
 
 LOGGING = {
     'version': 1,
-    'disable_existing_loggers': False,
+    'disable_existing_loggers': True,
     'handlers': {
         'console': {
             'class': 'logging.StreamHandler',

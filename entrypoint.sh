@@ -21,7 +21,7 @@ show_help() {
     manage        : Invoke django manage.py commands
     wsgi          : Run uwsgi
     setupdb  : Create empty database for tsampi
-    freeze_dependencies     : freepe pip dependencies and write to requirements.txt
+    pip_freeze     : freeze pip dependencies and write to requirements.txt
     """
 }
 
@@ -37,12 +37,15 @@ dev_server() {
     set +e
     cd /code/tsampi_server/
     trap 'kill %1; kill %2' SIGINT
-    /var/env/bin/python manage.py celery worker -l INFO  2> >(sed -e 's/^/[celery] /')  & /var/env/bin/python manage.py runserver 0.0.0.0:8080  2> >(sed -e 's/^/[django] /')
+    DEBUG=True /var/env/bin/celery -A tsampi_server worker -l info 2> >(sed -e 's/^/[celery] /')  & /var/env/bin/python manage.py runserver 0.0.0.0:8080  2> >(sed -e 's/^/[django] /')
     set -e
 }
 
 pip_freeze() {
+    rm -rf /tmp/env
     virtualenv -p python3 /tmp/env/
+    /tmp/env/bin/pip install --upgrade pip
+
     /tmp/env/bin/pip install -r ./primary-requirements.txt --upgrade
     set +x
     echo -e "###\n# frozen requirements DO NOT CHANGE\n# To update this update 'primary-requirements.txt' then run ./entrypoint.sh pip_freeze\n###" | tee requirements.txt
@@ -69,6 +72,9 @@ case "$1" in
     ;;
     devserver )
         dev_server
+    ;;
+    pip_freeze )
+        pip_freeze
     ;;
     *)
         show_help

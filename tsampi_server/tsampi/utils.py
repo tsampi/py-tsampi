@@ -81,7 +81,7 @@ def validate_commit(repo_path, commit):
     repo = Repo(repo_path)
     # print(repo.git.show(commit.hexsha))
 
-    repo.git.config('--global', 'gpg.program', here('../../gpg-with-fingerprint'))
+    #repo.git.config('--global', 'gpg.program', here('../../gpg-with-fingerprint'))
 
     if isinstance(commit, str):
         commit = repo.commit(commit)
@@ -106,7 +106,8 @@ def validate_commit(repo_path, commit):
         logger.info(p.hexsha)
         repo.git.checkout(p.hexsha)
         validate_input = repo.git.show(
-            commit.hexsha, c=True, show_signature=True, no_abbrev=True)
+            commit.hexsha, c=True, show_signature=True, no_abbrev=True, format='raw')
+        logger.info(validate_input)
         process = subprocess.Popen(['pypy-sandbox',
                                     '--tmp',
                                     repo.working_tree_dir,
@@ -238,7 +239,7 @@ def call_tsampi_chain(repo_uri, app=None, jsonrpc=None, commit=False, push=False
                         new_branch = 'failed-%s' % uuid.uuid4()
                         push_info = cloned_repo.remotes.origin.push(
                             'master:' + new_branch)
-                        errors = {'git': 'Failed pushhing'}
+                        errors['git'] = 'Failed pushing'
     except (Exception, GitCommandError) as e:
         errors['git'] = str(e)
         logging.exception('Could not call tsampi chain')
@@ -282,7 +283,7 @@ def tsampi_chain(repo_path, app=None, jsonrpc=None):
 
 def make_commit(repo_path, key=None, user='user', email='user@localhost'):
     repo = Repo(repo_path)
-    repo.git.config('--global', 'gpg.program', here('../../gpg-with-fingerprint'))
+    #repo.git.config('--global', 'gpg.program', here('../../gpg-with-fingerprint'))
     # if not key:
     #    key = assert_keys()
     repo.config_writer().set_value(section='user', option='name', value=user).set_value(
@@ -318,10 +319,10 @@ def make_commit(repo_path, key=None, user='user', email='user@localhost'):
 
         # Try again for proper POW
         repo.git.checkout('master')
-        repo.git.reset('HEAD~')
+        repo.git.reset('HEAD')
 
         # Just kidding, somethign else wrong happened, bail out
-        if errors != {'pow': False}:
+        if errors.keys() != ['pow']:
             logger.info('not going to try anymore')
             return False, errors
 
