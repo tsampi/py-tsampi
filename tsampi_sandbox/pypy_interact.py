@@ -132,12 +132,13 @@ class PyPySandboxedProc(VirtualizedSandboxedProc, SimpleIOSandboxedProc):
     virtual_env = {}
     virtual_console_isatty = True
 
-    def __init__(self, executable, arguments, tmpdir=None, debug=True, lib_root=None):
+    def __init__(self, executable, arguments, tmpdir=None, debug=True, lib_root=None, user='sybil'):
         self.lib_root = lib_root
         self.executable = executable = os.path.abspath(executable)
         self.tmpdir = tmpdir
         self.debug = debug
         self.sockets = {}
+        self.virtual_env['user'] = user
         # print(executable)
         super(PyPySandboxedProc, self).__init__([self.argv0] + arguments,
                                                 executable=executable)
@@ -280,7 +281,7 @@ def main():
     from getopt import getopt      # and not gnu_getopt!
     options, arguments = getopt(sys.argv[1:], 't:hv',
                                 ['lib_root=', 'tmp=', 'heapsize=', 'timeout=', 'log=',
-                                 'verbose', 'help'])
+                                 'user=', 'verbose', 'help'])
     tmpdir = None
     timeout = None
     logfile = None
@@ -315,6 +316,8 @@ def main():
             extraoptions[:0] = ['--heapsize', str(bytes)]
         elif option == '--timeout':
             timeout = int(value)
+        elif option == '--user':
+            user = value
         elif option == '--lib_root':
             lib_root = value
         elif option == '--log':
@@ -334,7 +337,7 @@ def main():
 
     sandproc = PyPySandboxedProc('/usr/lib/pypy-sandbox/pypy-c-sandbox',
                                  extraoptions + arguments,
-                                 tmpdir=tmpdir, debug=debug, lib_root=lib_root)
+                                 tmpdir=tmpdir, debug=debug, lib_root=lib_root, user=user)
     if timeout is not None:
         sandproc.settimeout(timeout, interrupt_main=True)
     if logfile is not None:

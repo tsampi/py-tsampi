@@ -4,6 +4,8 @@ uWSGI
 GitPython
 djangorestframework
 psycopg2
+mysql-connect-python
+mysqlclient
 django-extensions
 markdown
 ipython

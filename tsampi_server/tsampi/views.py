@@ -78,24 +78,32 @@ class AppDetail(APIView):
         user=request.user.username
         result = tasks.call_tsampi_chain.delay(
             settings.TSAMPI_CHAIN, app_name, request.data, commit=True, push=True, user=user, email="%s@%s" % (user, domain))
-        response = redirect('task-detail', result.task_id)
+        response = redirect('result-detail', result.task_id)
         response.status_code = 303
         return response
 
     def get(self, request, app_name):
         d = cacheback(10)(tasks.call_tsampi_chain)(
-            settings.TSAMPI_CHAIN, app_name)
+            settings.TSAMPI_CHAIN, app_name, user=request.user, email="{}@{}".format(user.username, )
         return Response(d['rpc_response'])
 
 
 class TaskDetail(APIView):
-    serializer_class = serializers.TaskSerializer
-
-
-
     def get(self, request, task_id):
         # TODO: delete task after sucessfully returned
         r = AsyncResult(task_id)
         r.get()
         data = serializers.TaskSerializer(r, context={'request': request}).data
+        return Response(data)
+
+
+class ResultDetail(APIView):
+    def get(self, request, task_id):
+        # TODO: delete task after sucessfully returned
+        r = AsyncResult(task_id)
+        r.get()
+        try:
+            data = r.result['rpc_response']['result']
+        except (KeyError, TypeError) as e:
+            data = r.result
         return Response(data)

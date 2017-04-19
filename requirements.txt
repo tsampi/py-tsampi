@@ -29,6 +29,7 @@ ipywidgets==5.2.2
 Jinja2==2.9.5
 jsonschema==2.6.0
 jupyter==1.0.0
+mysqlclient
 jupyter-client==5.0.0
 jupyter-console==5.1.0
 jupyter-core==4.3.0

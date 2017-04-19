@@ -216,7 +216,7 @@ def merge_from_peer(repo_uri, peer_uri, push=False, key=None, user='user', email
         return True
 
 
-def call_tsampi_chain(repo_uri, app=None, jsonrpc=None, commit=False, push=False, user='user', email='user@localhost'):
+def call_tsampi_chain(repo_uri, app=None, jsonrpc=None, commit=False, push=False, user='sybil', email='<>'):
     errors = {}
     rpc_out = ''
     diff = ''
@@ -225,14 +225,13 @@ def call_tsampi_chain(repo_uri, app=None, jsonrpc=None, commit=False, push=False
             logger.info('tmp git repo: %s', tmp_path)
             cloned_repo = Repo.clone_from(repo_uri, tmp_path, depth=2)
             rpc_out, diff = tsampi_chain(
-                cloned_repo.working_tree_dir, app, jsonrpc)
+                cloned_repo.working_tree_dir, app, jsonrpc, user)
             # There should be something to commit
             if commit and diff:
                 key = settings.TSAMPI_GPG_FINGERPRINT
                 success, errors = make_commit(cloned_repo.working_tree_dir, key=key, user=user, email=email)
                 if push and success:
                     try:
-                        #import IPython; IPython.embed()
                         push_repo(cloned_repo.working_tree_dir, attempts=10)
                     except (Exception, GitCommandError) as e:
                         # push this to a branch and raise
@@ -247,7 +246,7 @@ def call_tsampi_chain(repo_uri, app=None, jsonrpc=None, commit=False, push=False
     return {'rpc_response': rpc_out, 'diff': diff, 'tsampi_errors': errors}
 
 
-def tsampi_chain(repo_path, app=None, jsonrpc=None):
+def tsampi_chain(repo_path, app=None, jsonrpc=None, user='sybil'):
     # shallow clone of repo
     # All interaction with the sandbox should be with a freshly cloned repo.
     repo = Repo(repo_path)
@@ -257,8 +256,8 @@ def tsampi_chain(repo_path, app=None, jsonrpc=None):
     if jsonrpc and app:
         app_and_rpc.extend(['--jsonrpc',  json.dumps(jsonrpc)])
 
-    print(os.path.join(repo.working_tree_dir, './tsampi/pypy/'))
     out = subprocess.check_output([settings.TSAMPI_SANDBOX_EXEC,
+                                   '--user', user
                                    '--tmp',
                                    repo.working_tree_dir,
                                    '--lib_root',
@@ -319,10 +318,10 @@ def make_commit(repo_path, key=None, user='user', email='user@localhost'):
 
         # Try again for proper POW
         repo.git.checkout('master')
-        repo.git.reset('HEAD')
+        repo.git.reset('HEAD~')
 
         # Just kidding, somethign else wrong happened, bail out
-        if errors.keys() != ['pow']:
+        if list(errors.keys()) != ['pow']:
             logger.info('not going to try anymore')
             return False, errors
 
