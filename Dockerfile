@@ -1,4 +1,4 @@
-FROM ubuntu:16.04
+FROM ubuntu:14.04
 
 ENV TERM screen-256color
 
@@ -36,7 +36,7 @@ rlwrap
 #RUN ssh-keyscan -t rsa,dsa github.com bitbucket.org gitlab.com >> ~/.ssh/known_hosts
 
 RUN virtualenv -p python3 /var/env/
-RUN /var/env/bin/pip install wheel --upgrade
+RUN /var/env/bin/pip install wheel pip --upgrade
 RUN /var/env/bin/pip install psycopg2 python-gnupg jupyter
 
 WORKDIR /code/
